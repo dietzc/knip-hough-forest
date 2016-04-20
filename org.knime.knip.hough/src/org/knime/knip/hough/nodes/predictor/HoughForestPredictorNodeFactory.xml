@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE knimeNode PUBLIC "-//UNIKN//DTD KNIME Node 2.0//EN" "http://www.knime.org/Node.dtd">
+<knimeNode icon="hough_predictor.png" type="Predictor">
+	<name>Hough Forest Predictor</name>
+
+	<shortDescription>Predicts detected objects according to an aggregation
+		of the predictions of the individual trees in a Hough forest model.</shortDescription>
+
+	<fullDescription>
+		<intro>
+			Predicts the location of objects in images according to an
+			aggregation of the predictions of the individual trees in a Hough
+			forest model.
+			<br />
+			Hough forests has been proposed in
+			<i>Class-Specific Hough Forests for Object Detection</i>
+			by Juergen Gall and Victor Lempitsky. A Hough forest can be used for
+			object detection in images and is a special kind of random forest
+			using a
+			generalized form of a Hough transform to give probabilistic
+			votes for the location of the searched objects.
+		</intro>
+		<tab name="Input">
+			<option name="Image column">
+				Select the image column to predict on.
+			</option>
+		</tab>
+		<tab name="Patch Extraction">
+			<option name="Horizontal stride size">
+				Defines the horizontal distance of the centers of
+				two extracted
+				neighbored
+				patches. The width of the patches is defined in the model.
+				Number of patches in horizontal direction will be
+				<i>1 + (image_width - patch_width) / stride_hor</i>
+				.
+			</option>
+			<option name="Vertical stride size">
+				Defines the vertical distance of the centers of
+				two extracted
+				neighbored
+				patches. The height of the patches is defined in the
+				model.
+				Number of patches in vertical direction will be
+				<i>1 + (image_height - patch_height) / stride_ver</i>
+				.
+			</option>
+		</tab>
+		<tab name="Back Projection">
+			<option name="Size of the area around found maxima">
+			</option>
+		</tab>
+		<tab name="Multiple Detection">
+			<option name="Detect multiple objects">
+				Select, if multiple objects should be detected.
+				If selected, a threshold
+				and sigma needs to be defined. If not
+				selected, only one object will
+				be detected which location is defined
+				by the pixel which got the most votes.
+			</option>
+			<option name="Threshold">
+			Defines the threshold 
+			</option>
+		</tab>
+		<tab name="Scales">
+			<option name="Sigma">
+			
+			</option>
+			<option name="Scale 1-4">
+				Up to four scales can be selected.
+			</option>
+		</tab>
+		<tab name="Output">
+			<option name="Votes">
+			</option>
+			<option name="Maxima">
+			</option>
+			<option name="Extended prediction labeling">
+			</option>
+		</tab>
+
+	</fullDescription>
+	<ports>
+		<inPort index="0" name="Hough Forest Model">
+		</inPort>
+
+		<inPort index="1" name="Input data">
+		</inPort>
+
+		<outPort index="0" name="Prediction output">
+		</outPort>
+	</ports>
+	<views>
+		<view name="Image Viewer" index="0">
+			Displays the selected cells with
+			their associated viewer if it exists.
+		</view>
+		<view name="Segmentation Viewer" index="1">
+			Displays the input image
+			with
+			the predicted segment overlays.
+		</view>
+
+	</views>
+</knimeNode>

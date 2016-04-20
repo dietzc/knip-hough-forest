@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.0"?>
+<plugin>
+   <extension
+         point="org.knime.core.PortType">
+      <portType
+            color="#E80000"
+            hidden="false"
+            name="Hough Forest"
+            objectClass="org.knime.knip.hough.ports.HoughForestModelPortObject"
+            objectSerializer="org.knime.knip.hough.ports.HoughForestModelPortObject$HoughForestModelPortObjectSerializer"
+            specClass="org.knime.knip.hough.ports.HoughForestModelPortObjectSpec"
+            specSerializer="org.knime.knip.hough.ports.HoughForestModelPortObjectSpec$HoughForestModelPortObjectSpecSerializer">
+      </portType>
+   </extension>
+   <extension
+         point="org.knime.workbench.repository.nodes">
+      <node
+            category-path="/community/knip/hough"
+            deprecated="false"
+            factory-class="org.knime.knip.hough.nodes.predictor.HoughForestPredictorNodeFactory">
+      </node>
+      <node
+            category-path="/community/knip/hough"
+            deprecated="false"
+            factory-class="org.knime.knip.hough.nodes.learner.HoughForestLearnerNodeFactory">
+      </node>
+   </extension>
+   <extension
+         point="org.knime.workbench.repository.categories">
+      <category
+            icon="icons/missing.gif"
+            level-id="hough"
+            locked="true"
+            name="Hough Forest"
+            path="/community/knip">
+      </category>
+   </extension>
+</plugin>

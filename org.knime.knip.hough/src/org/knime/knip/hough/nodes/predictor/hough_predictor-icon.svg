@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   width="300mm"
+   height="300mm"
+   viewBox="0 0 1062.9921 1062.9921"
+   id="svg4143"
+   version="1.1"
+   inkscape:version="0.91 r13725"
+   sodipodi:docname="hough_learner-icon.svg"
+   inkscape:export-filename="/home/simon/Desktop/hough/forest/drawing.png"
+   inkscape:export-xdpi="1.35"
+   inkscape:export-ydpi="1.35">
+  <defs
+     id="defs4145" />
+  <sodipodi:namedview
+     id="base"
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1.0"
+     inkscape:pageopacity="0.0"
+     inkscape:pageshadow="2"
+     inkscape:zoom="0.35"
+     inkscape:cx="-3.3991284"
+     inkscape:cy="556.84445"
+     inkscape:document-units="px"
+     inkscape:current-layer="layer1"
+     showgrid="false"
+     units="mm"
+     inkscape:window-width="2560"
+     inkscape:window-height="1343"
+     inkscape:window-x="0"
+     inkscape:window-y="27"
+     inkscape:window-maximized="1" />
+  <metadata
+     id="metadata4148">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <dc:title />
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1"
+     transform="translate(0,10.629921)">
+    <g
+       id="g3"
+       transform="matrix(42.229702,0,0,42.229702,387.21552,376.68697)">
+      <polygon
+         points="11.3,9.1 6.8,9.1 6.8,5.3 13.9,5.3 13.9,8.5 16,8.5 16,3.1 11.4,3.1 11.4,0 9.3,0 9.3,3.1 4.6,3.1 4.6,9.1 0,9.1 0,16 2.1,16 2.1,11.3 9.2,11.3 9.2,16 11.4,16 "
+         id="polygon5" />
+    </g>
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-weight:normal;font-size:675.82006836px;line-height:125%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       x="107.67196"
+       y="482.65121"
+       id="text4139"
+       sodipodi:linespacing="125%"><tspan
+         sodipodi:role="line"
+         id="tspan4141"
+         x="107.67196"
+         y="482.65121">H</tspan></text>
+    <rect
+       ry="0.00016851972"
+       rx="0.0001223357"
+       y="-10.629959"
+       x="0"
+       height="1062.9921"
+       width="131.10236"
+       id="rect3089"
+       style="fill:#8c0000;fill-opacity:1;stroke:none" />
+    <polygon
+       class="st0"
+       points="-409.5,291.3 -398.1,298.3 -409.5,305.3 "
+       id="polygon11-8"
+       style="fill:#c4d13b"
+       transform="matrix(39.30381,0,0,39.30381,16686.072,-10966.743)" />
+    <path
+       class="st1"
+       d="m 591.16117,1052.3622 c -3.9304,0 -7.86079,0 -7.86079,-3.9304 -7.8608,-3.9304 -11.79083,-11.7912 -11.79083,-15.7216 l 0,-550.25306 c 0,-7.86079 3.93003,-11.79119 11.79083,-15.72159 7.86079,-3.9304 15.72159,-3.9304 19.65198,0 l 448.06344,275.12673 c 3.9304,3.9304 7.8608,11.79083 7.8608,15.72122 0,3.9304 -3.9304,11.79119 -7.8608,15.72159 L 602.95236,1048.4318 c -3.93039,0 -7.86079,3.9304 -11.79119,3.9304 z m 19.65199,-534.53184 0,479.50664 L 999.92104,757.5835 610.81316,517.83036 Z"
+       id="path13-9"
+       inkscape:connector-curvature="0"
+       style="fill:#1a171b" />
+  </g>
+</svg>

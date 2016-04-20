@@ -1,0 +1,13 @@
+code:
+- improve weighting of votes of different scales
+- default values
+
+general:
+- node description
+
+
+entanglement:
+- breadth first
+- new features
+- prob. distr. for feature selection during training (-> 2nd training needed) -> depends on tree level
+- prob. distr. for feature parameters
