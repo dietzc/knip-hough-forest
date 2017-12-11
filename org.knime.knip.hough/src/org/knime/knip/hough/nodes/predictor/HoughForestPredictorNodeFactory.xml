@@ -46,49 +46,102 @@
 				.
 			</option>
 		</tab>
-		<tab name="Back Projection">
-			<option name="Size of the area around found maxima">
+		<tab name="Voting">
+			<option name="Scale 1-4">
+				Prediction can be done using up to four scales
+				for the images. A voting will be performed for every scaled image.
+				The resulting images containing the votes will be stacked.
+			</option>
+			<option name="Sigma">
+				Defines the sigma of the gaussian filter which is
+				applied onto the votes. It will be only applied to the x and y
+				direction, but not into z direction (size of the z dimension is
+				defined by the number of used scales).
 			</option>
 		</tab>
-		<tab name="Multiple Detection">
+		<tab name="Detection">
 			<option name="Detect multiple objects">
-				Select, if multiple objects should be detected.
+				Select, if multiple objects should be detected,
+				i.e. multiple maxima
+				in the votes image.
+				<br />
 				If selected, a threshold
-				and sigma needs to be defined. If not
-				selected, only one object will
-				be detected which location is defined
-				by the pixel which got the most votes.
+				needs to be defined. All local maxima having
+				a value greater or
+				equal the threshold value will define the center
+				of a detected
+				object.
+				<br />
+				If not
+				selected, only
+				one object will
+				be detected which
+				center
+				location
+				is defined
+				by the global maximum.
 			</option>
 			<option name="Threshold">
-			Defines the threshold 
+				The threshold used to threshold the local maxima.
 			</option>
 		</tab>
-		<tab name="Scales">
-			<option name="Sigma">
-			
-			</option>
-			<option name="Scale 1-4">
-				Up to four scales can be selected.
+		<tab name="Back Projection">
+			<option name="Size of the area around found maxima">
+				Defines the span in x and y direction of a area
+				around the found maxima. All patches which voted inside this area,
+				will belong to the detected object.
 			</option>
 		</tab>
 		<tab name="Output">
 			<option name="Votes">
+				If selected, the image containing the votes will
+				be appended to the output.
 			</option>
 			<option name="Maxima">
+				If selected, the (thresholded) image containing
+				the maxima defining
+				the centers of the objects will be appended to
+				the
+				output.
 			</option>
 			<option name="Extended prediction labeling">
+				This option is more advanced and can be used to interpret results
+				and optimize parameters.
+				<br />
+				If selected, besides the bounding box of the
+				detected objects the
+				predicted labeling will contain also:
+				<ul>
+					<li>labels defining the (defined above) area around found maxima
+						used for back projection and
+					</li>
+					<li>labels defining the center of the patches which has voted
+						inside these areas and are spanning the bounding box.
+					</li>
+				</ul>
 			</option>
 		</tab>
 
 	</fullDescription>
 	<ports>
 		<inPort index="0" name="Hough Forest Model">
+			The Hough forest model.
 		</inPort>
 
 		<inPort index="1" name="Input data">
+			Input table containig an image column on
+			which the prediction is
+			performed.
 		</inPort>
 
 		<outPort index="0" name="Prediction output">
+			A labeling will be in the output
+			containing the predicted bounding
+			boxes and, if the user has selected,
+			an image with the collected
+			votes and an image with the found maxima
+			which are the centers of the
+			detected objects.
 		</outPort>
 	</ports>
 	<views>

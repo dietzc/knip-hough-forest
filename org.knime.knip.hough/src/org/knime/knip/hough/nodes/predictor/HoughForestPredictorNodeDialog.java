@@ -80,23 +80,8 @@ final class HoughForestPredictorNodeDialog extends DefaultNodeSettingsPane {
 		addDialogComponent(new DialogComponentNumber(HoughForestPredictorNodeModel.createPatchGapYModel(),
 				"Vertical stride size", 1));
 
-		// Back Projection
-		createNewGroup("Back Projection");
-		addDialogComponent(
-				new DialogComponentNumber(HoughForestPredictorNodeModel.createSpanIntervalBackprojectionModel(),
-						"Size of the area around found maxima", 1.0));
-
-		// Multiple Detection
-		createNewGroup("Multiple Detection");
-		final SettingsModelDouble thresholdModel = HoughForestPredictorNodeModel
-				.createThresholdMultipleDetectionDoubleModel();
-		final SettingsModelBoolean multipleDetectionBoolModel = HoughForestPredictorNodeModel
-				.createMultipleDetectionBoolModel(thresholdModel);
-		addDialogComponent(new DialogComponentBoolean(multipleDetectionBoolModel, "Detect multiple objects"));
-		addDialogComponent(new DialogComponentNumber(thresholdModel, "Threshold", 0.1));
-
-		// Scales
-		createNewGroup("Scales");
+		// Voting
+		createNewGroup("Voting");
 		setHorizontalPlacement(true);
 		final SettingsModelBoolean scalesBoolModel1 = HoughForestPredictorNodeModel.createScalesBoolModel(1);
 		addDialogComponent(new DialogComponentBoolean(scalesBoolModel1, "Scale 1"));
@@ -126,6 +111,21 @@ final class HoughForestPredictorNodeDialog extends DefaultNodeSettingsPane {
 
 		setHorizontalPlacement(false);
 		addDialogComponent(new DialogComponentNumber(HoughForestPredictorNodeModel.createSigmaModel(), "Sigma", 1));
+
+		// Detection
+		createNewGroup("Detection");
+		final SettingsModelDouble thresholdModel = HoughForestPredictorNodeModel
+				.createThresholdMultipleDetectionDoubleModel();
+		final SettingsModelBoolean multipleDetectionBoolModel = HoughForestPredictorNodeModel
+				.createMultipleDetectionBoolModel(thresholdModel);
+		addDialogComponent(new DialogComponentBoolean(multipleDetectionBoolModel, "Detect multiple objects"));
+		addDialogComponent(new DialogComponentNumber(thresholdModel, "Threshold", 0.1));
+
+		// Back Projection
+		createNewGroup("Back Projection");
+		addDialogComponent(
+				new DialogComponentNumber(HoughForestPredictorNodeModel.createSpanIntervalBackprojectionModel(),
+						"Size of the area around found maxima", 1.0));
 
 		// Output
 		createNewGroup("Output");

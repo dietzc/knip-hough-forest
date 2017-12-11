@@ -1,10 +1,5 @@
 code:
-- improve weighting of votes of different scales
-- default values
-
-general:
-- node description
-
+- investigate weighting of votes of different scales
 
 entanglement:
 - breadth first

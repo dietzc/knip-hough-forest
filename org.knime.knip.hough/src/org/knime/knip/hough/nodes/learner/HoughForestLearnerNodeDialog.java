@@ -75,8 +75,9 @@ final class HoughForestLearnerNodeDialog extends DefaultNodeSettingsPane {
 		createNewGroup("Input");
 		addDialogComponent(new DialogComponentColumnNameSelection(HoughForestLearnerNodeModel.createColSelectionModel(),
 				"Image column", 0, true, ImgPlusValue.class));
-		addDialogComponent(new DialogComponentColumnNameSelection(
-				HoughForestLearnerNodeModel.createLabelSelectionModel(), "Label column", 0, true, LabelingValue.class));
+		addDialogComponent(
+				new DialogComponentColumnNameSelection(HoughForestLearnerNodeModel.createLabelSelectionModel(),
+						"Labeling column", 0, true, LabelingValue.class));
 
 		createNewGroup("Tree Options");
 		addDialogComponent(new DialogComponentNumber(HoughForestLearnerNodeModel.createNumSamplesModel(),

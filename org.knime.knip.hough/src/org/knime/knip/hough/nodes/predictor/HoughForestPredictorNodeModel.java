@@ -187,19 +187,19 @@ final class HoughForestPredictorNodeModel<T extends RealType<T>> extends NodeMod
 	}
 
 	static SettingsModelIntegerBounded createPatchGapXModel() {
-		return new SettingsModelIntegerBounded("gap_horizontal", 12, 0, Integer.MAX_VALUE);
+		return new SettingsModelIntegerBounded("gap_horizontal", 8, 0, Integer.MAX_VALUE);
 	}
 
 	static SettingsModelIntegerBounded createPatchGapYModel() {
-		return new SettingsModelIntegerBounded("gap_vertical", 12, 0, Integer.MAX_VALUE);
+		return new SettingsModelIntegerBounded("gap_vertical", 8, 0, Integer.MAX_VALUE);
 	}
 
 	static SettingsModelDoubleBounded createSigmaModel() {
-		return new SettingsModelDoubleBounded("sigma", 15.0, 0, Double.MAX_VALUE);
+		return new SettingsModelDoubleBounded("sigma", 10.0, 0, Double.MAX_VALUE);
 	}
 
 	static SettingsModelIntegerBounded createSpanIntervalBackprojectionModel() {
-		return new SettingsModelIntegerBounded("size_bakprojection", 15, 1, Integer.MAX_VALUE);
+		return new SettingsModelIntegerBounded("span_area_backprojection", 15, 1, Integer.MAX_VALUE);
 	}
 
 	static SettingsModelBoolean createMultipleDetectionBoolModel(final SettingsModelDouble thresholdModel) {
@@ -275,7 +275,7 @@ final class HoughForestPredictorNodeModel<T extends RealType<T>> extends NodeMod
 			m_imageColIdx = inSpec.findColumnIndex(m_colImage.getStringValue());
 			if (m_imageColIdx < 0)
 				throw new InvalidSettingsException(
-						"Column '" + m_colImage.getStringValue() + "' not found in input spec!");
+						"Image column '" + m_colImage.getStringValue() + "' not found in the input table!");
 		} else {
 			throw new InvalidSettingsException("An image column must be selected!");
 		}
@@ -450,6 +450,10 @@ final class HoughForestPredictorNodeModel<T extends RealType<T>> extends NodeMod
 		@Override
 		public DataCell[] getCells(DataRow row) {
 			final ImgPlus<T> img = ((ImgPlusValue<T>) row.getCell(m_imageColIdx)).getImgPlus();
+			if (img.numDimensions() != 2 && !(img.numDimensions() == 3 && img.dimension(2) == 3)) {
+				throw new IllegalArgumentException(
+						"Image of row '" + row.getKey() + "' must be either 2D or 3D with three channels!");
+			}
 			// will collect votes of the different scales
 			final List<RandomAccessibleInterval<FloatType>> votesAllSc = new ArrayList<>(m_scales.length);
 			// will collect all prediction objects the of different scales
@@ -536,7 +540,8 @@ final class HoughForestPredictorNodeModel<T extends RealType<T>> extends NodeMod
 				try {
 					m_es.invokeAll(threads);
 				} catch (final InterruptedException e) {
-					throw new RuntimeException(e); // FIXME
+					Thread.currentThread().interrupt();
+					throw new RuntimeException(e);
 				}
 				votesAllSc.add(votesSc);
 			}
@@ -544,7 +549,8 @@ final class HoughForestPredictorNodeModel<T extends RealType<T>> extends NodeMod
 			// Blur votes
 			final double sigma = m_sigma.getDoubleValue();
 			final RandomAccessibleInterval<FloatType> votes = m_ops.filter().convolve(Views.stack(votesAllSc),
-					(RandomAccessibleInterval<T>) m_ops.create().kernelGauss(sigma, sigma, 0.5));
+					(RandomAccessibleInterval<T>) m_ops.create().kernelGauss(sigma, sigma, 0)); // TODO sigma for 3rd
+																								// dim?
 
 			/*
 			 * === Bounding Box Estimation ===

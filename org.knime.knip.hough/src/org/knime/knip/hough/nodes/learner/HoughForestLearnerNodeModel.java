@@ -57,6 +57,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 
 import org.knime.core.data.DataRow;
+import org.knime.core.data.DataTableSpec;
 import org.knime.core.node.BufferedDataTable;
 import org.knime.core.node.CanceledExecutionException;
 import org.knime.core.node.ExecutionContext;
@@ -151,7 +152,7 @@ final class HoughForestLearnerNodeModel<T extends RealType<T>, L> extends NodeMo
 	}
 
 	static SettingsModelIntegerBounded createNumTreesModel() {
-		return new SettingsModelIntegerBounded("num_trees", 5, 1, Integer.MAX_VALUE);
+		return new SettingsModelIntegerBounded("num_trees", 8, 1, Integer.MAX_VALUE);
 	}
 
 	static SettingsModelBoolean createUseSeedBoolModel() {
@@ -163,15 +164,15 @@ final class HoughForestLearnerNodeModel<T extends RealType<T>, L> extends NodeMo
 	}
 
 	static SettingsModelIntegerBounded createNumSamplesModel() {
-		return new SettingsModelIntegerBounded("num_samples", 500, 1, Integer.MAX_VALUE);
+		return new SettingsModelIntegerBounded("num_samples", 10000, 1, Integer.MAX_VALUE);
 	}
 
 	static SettingsModelIntegerBounded createNumSplitFunctionsModel() {
-		return new SettingsModelIntegerBounded("num_split_functions", 2000, 1, Integer.MAX_VALUE);
+		return new SettingsModelIntegerBounded("num_split_functions", 10000, 1, Integer.MAX_VALUE);
 	}
 
 	static SettingsModelDoubleBounded createThresholdModel() {
-		return new SettingsModelDoubleBounded("threshold", 2.0, 0, Integer.MAX_VALUE);
+		return new SettingsModelDoubleBounded("threshold", 5.0, 0, Integer.MAX_VALUE);
 	}
 
 	static SettingsModelIntegerBounded createDepthModel() {
@@ -219,19 +220,19 @@ final class HoughForestLearnerNodeModel<T extends RealType<T>, L> extends NodeMo
 	}
 
 	static SettingsModelIntegerBounded createPatchGapXModel() {
-		return new SettingsModelIntegerBounded("gap_horizontal", 12, 0, Integer.MAX_VALUE);
+		return new SettingsModelIntegerBounded("gap_horizontal", 8, 0, Integer.MAX_VALUE);
 	}
 
 	static SettingsModelIntegerBounded createPatchGapYModel() {
-		return new SettingsModelIntegerBounded("gap_vertical", 12, 0, Integer.MAX_VALUE);
+		return new SettingsModelIntegerBounded("gap_vertical", 8, 0, Integer.MAX_VALUE);
 	}
 
 	static SettingsModelIntegerBounded createPatchWidthModel() {
-		return new SettingsModelIntegerBounded("patch_width", 20, 0, Integer.MAX_VALUE);
+		return new SettingsModelIntegerBounded("patch_width", 16, 1, Integer.MAX_VALUE);
 	}
 
 	static SettingsModelIntegerBounded createPatchHeightModel() {
-		return new SettingsModelIntegerBounded("patch_height", 20, 0, Integer.MAX_VALUE);
+		return new SettingsModelIntegerBounded("patch_height", 16, 1, Integer.MAX_VALUE);
 	}
 
 	/**
@@ -241,37 +242,47 @@ final class HoughForestLearnerNodeModel<T extends RealType<T>, L> extends NodeMo
 		super(new PortType[] { BufferedDataTable.TYPE }, new PortType[] { HoughForestModelPortObject.TYPE });
 	}
 
+	private int fetchImgColIdx(final DataTableSpec spec) throws InvalidSettingsException {
+		if (m_colImage.getStringValue() != null && !m_colImage.getStringValue().isEmpty()) {
+			final int imgIdx = spec.findColumnIndex(m_colImage.getStringValue());
+			if (imgIdx < 0) {
+				throw new InvalidSettingsException(
+						"Image column '" + m_colImage.getStringValue() + "' not found in the input table!");
+			}
+			return imgIdx;
+		} else {
+			throw new InvalidSettingsException("An image column must be selected!");
+		}
+	}
+
+	private int fetchLabelingColIdx(final DataTableSpec spec) throws InvalidSettingsException {
+		if (m_colLabel.getStringValue() != null && !m_colLabel.getStringValue().isEmpty()) {
+			final int labelIdx = spec.findColumnIndex(m_colLabel.getStringValue());
+			if (labelIdx < 0) {
+				throw new InvalidSettingsException(
+						"Labeling column '" + m_colLabel.getStringValue() + "' not found in the input table!");
+			}
+			return labelIdx;
+		} else {
+			throw new InvalidSettingsException("A labeling column must be selected!");
+		}
+	}
+
 	/** {@inheritDoc} */
+	@SuppressWarnings("unchecked")
 	@Override
 	protected PortObject[] execute(final PortObject[] inObjects, final ExecutionContext exec) throws Exception {
 		final BufferedDataTable table = (BufferedDataTable) inObjects[0];
-		// Get the image column
-		final int imgIdx;
-		if (m_colImage.getStringValue() != null && !m_colImage.getStringValue().isEmpty()) {
-			imgIdx = ((BufferedDataTable) inObjects[0]).getSpec().findColumnIndex(m_colImage.getStringValue());
-			if (imgIdx < 0)
-				throw new InvalidSettingsException(
-						"Image column '" + m_colImage.getStringValue() + "' not found in the input table!");
-		} else {
-			throw new InvalidSettingsException("The selected image column must not be empty!");
-		}
-		// Get the label column
-		final int labelIdx;
-		if (m_colLabel.getStringValue() != null && !m_colLabel.getStringValue().isEmpty()) {
-			labelIdx = ((BufferedDataTable) inObjects[0]).getSpec().findColumnIndex(m_colLabel.getStringValue());
-			if (labelIdx < 0)
-				throw new InvalidSettingsException(
-						"Label column '" + m_colLabel.getStringValue() + "' not found in the input table!");
-		} else {
-			throw new InvalidSettingsException("The selected label column must not be empty!");
-		}
+		// Get the image and labeling column
+		final DataTableSpec spec = ((BufferedDataTable) inObjects[0]).getSpec();
+		final int imgIdx = fetchImgColIdx(spec);
+		final int labelIdx = fetchLabelingColIdx(spec);
 
 		// Set progress to zero, so that in the parallel threads the progress can still be added
 		exec.setProgress(0);
 
 		// Parallelization stuff
 		final ExecutorService es = KNIPGateway.threads().getExecutorService();
-		// final ExecutorService es = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
 		final List<ExtractParallel> threads = new ArrayList<>((int) table.size());
 
 		/*
@@ -311,7 +322,8 @@ final class HoughForestLearnerNodeModel<T extends RealType<T>, L> extends NodeMo
 			for (final Future<List<TrainingObject<FloatType>>> future : invokeAll)
 				patches.addAll(future.get());
 		} catch (final InterruptedException e) {
-			throw new RuntimeException(e); // TODO exception handling
+			Thread.currentThread().interrupt();
+			throw new RuntimeException(e);
 		}
 		es.shutdown();
 		getLogger().infoWithFormat("%d patches extracted.", patches.size());
@@ -338,10 +350,8 @@ final class HoughForestLearnerNodeModel<T extends RealType<T>, L> extends NodeMo
 	 */
 	@Override
 	protected PortObjectSpec[] configure(final PortObjectSpec[] inSpecs) throws InvalidSettingsException {
-		if (m_numTrees.getIntValue() < 1) {
-			throw new InvalidSettingsException("The number of trees must be at least 1!");
-		}
-		// TODO check settings
+		fetchImgColIdx((DataTableSpec) inSpecs[0]);
+		fetchLabelingColIdx((DataTableSpec) inSpecs[0]);
 		return new PortObjectSpec[] { new HoughForestModelPortObjectSpec() };
 	}
 
@@ -378,6 +388,9 @@ final class HoughForestLearnerNodeModel<T extends RealType<T>, L> extends NodeMo
 			s.loadSettingsFrom(settings);
 		}
 
+		if (m_numTrees.getIntValue() < 1) {
+			throw new InvalidSettingsException("The number of trees must be at least 1!");
+		}
 		if (m_numSamples.getIntValue() < m_minSizeSample.getIntValue()) {
 			throw new InvalidSettingsException("The size of the sample must not be lower than the minimum size!");
 		}
@@ -418,6 +431,9 @@ final class HoughForestLearnerNodeModel<T extends RealType<T>, L> extends NodeMo
 			while (!m_images.isEmpty()) {
 				final ImgPlus<T> image = m_images.remove(0);
 				final RandomAccessibleInterval<LabelingType<L>> labeling = m_labelings.remove(0);
+				if (image.numDimensions() != 2 && !(image.numDimensions() == 3 && image.dimension(2) == 3)) {
+					throw new IllegalArgumentException("The images must be either 2D or 3D with three channels!");
+				}
 				if (image.dimension(0) != labeling.dimension(0) || image.dimension(1) != labeling.dimension(1)) {
 					throw new IllegalArgumentException(
 							"The image and label must have the same size in the first two dimensions!");

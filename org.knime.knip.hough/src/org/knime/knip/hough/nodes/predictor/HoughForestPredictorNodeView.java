@@ -263,8 +263,6 @@ public class HoughForestPredictorNodeView<T extends RealType<T>, L extends Compa
 	protected void modelChanged() {
 		m_tableContentView.setModel(getNodeModel().getTableContentModel());
 		m_imgView = null;
-		// TODO
-		// m_sp.setRightComponent(new JPanel());
 		if (m_hiliteProvider != null) {
 			getNodeModel();
 			final HiLiteHandler handler = getNodeModel().getInHiLiteHandler(1);
@@ -398,8 +396,6 @@ public class HoughForestPredictorNodeView<T extends RealType<T>, L extends Compa
 						}, type);
 			}
 
-			// TODO here copy source labeling into new labeling
-
 			if (!Intervals.equalDimensions(underlyingInterval, displayedLabeling)) {
 				displayedLabeling = MiscViews.synchronizeDimensionality(displayedLabeling,
 						currentLabelingCell.getLabelingMetadata(), underlyingInterval,
@@ -489,13 +485,8 @@ public class HoughForestPredictorNodeView<T extends RealType<T>, L extends Compa
 
 	static class LabelingMappingAccess extends LabelingMapping.SerialisationAccess<String> {
 
-		private LabelingMapping<String> mapping;
-
-		/**
-		 * @param mapping
-		 */
 		protected LabelingMappingAccess(final LabelingMapping<String> newMapping, final LabelingMapping<?> oldMapping,
-				final Map<String, Object> map, final HoughForestPredictorNodeModel model) {
+				final Map<String, Object> map, final HoughForestPredictorNodeModel<?> model) {
 			super(newMapping);
 
 			final List<Set<String>> newLabels = new ArrayList<>();

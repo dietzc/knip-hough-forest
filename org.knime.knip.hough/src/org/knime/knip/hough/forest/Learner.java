@@ -193,7 +193,8 @@ public final class Learner {
 			for (final Future<SplitNode> future : invokeAll)
 				trees.add(future.get());
 		} catch (final InterruptedException e) {
-			throw new RuntimeException(e); // TODO exception handling
+			Thread.currentThread().interrupt();
+			throw new RuntimeException(e);
 		}
 		es.shutdown();
 		LOGGER.info("Learning successfully finished.");
@@ -216,6 +217,8 @@ final class TrainParallel<T extends RealType<T>> implements Callable<SplitNode> 
 	private final int m_idx;
 	private final long m_seed;
 
+	private int m_numFails;
+
 	TrainParallel(final PatchSample<T> trainingSet, final int numSamples, final int maxDepth, final int minSizeSample,
 			final int numSplitFunctions, final double threshold, final ExecutionContext exec, final double progress,
 			final int idx, final long seed) {
@@ -229,12 +232,13 @@ final class TrainParallel<T extends RealType<T>> implements Callable<SplitNode> 
 		m_progress = progress;
 		m_idx = idx;
 		m_seed = seed;
+		m_numFails = 0;
 	}
 
 	@Override
 	public SplitNode call() throws Exception {
 		LOGGER.info("Learning hough tree no. " + m_idx + "...");
-		final PatchSample<T> randomSample = HoughForestUtils.randomSample(m_trainingSet, m_numSamples, m_seed); // TODO
+		final PatchSample<T> randomSample = HoughForestUtils.randomSample(m_trainingSet, m_numSamples, m_seed);
 		final Node root = Learner.trainDepthFirst(randomSample, 0, m_maxDepth, m_minSizeSample, m_numSplitFunctions,
 				m_threshold, m_trainingSet, m_exec, m_seed);
 		if (root instanceof SplitNode) {
@@ -242,8 +246,17 @@ final class TrainParallel<T extends RealType<T>> implements Callable<SplitNode> 
 			m_exec.setProgress(m_exec.getProgressMonitor().getProgress() + m_progress);
 			return (SplitNode) root;
 		} else {
-			LOGGER.info("Learning of hough tree no. " + m_idx + " failed. Trying again..."); // FIXME
-			return call();
+			if (m_numFails > 2) {
+				m_numFails++;
+				LOGGER.info(
+						"Learning of hough tree no. " + m_idx + " failed " + m_numFails + " times. Trying again...");
+				return call();
+			} else {
+				final String msg = "Learning of hough tree no. " + m_idx
+						+ " failed three times. Check training data and parameter settings.";
+				LOGGER.error(msg);
+				throw new IllegalStateException(msg);
+			}
 		}
 	}
 

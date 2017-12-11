@@ -26,10 +26,10 @@
 				Select the image column. Can be either 2D
 				(grayscale) or 3D (color).
 			</option>
-			<option name="Label	 column">
-				Select the label column. The size of the first
-				two label dimensions must be the same as the size of the image. The
-				value of the labels
+			<option name="Labeling column">
+				Select the labeling column. The size of the first
+				two labeling dimensions must be the same as the size of the image. The
+				values of the labels
 				do
 				not care, every labeled part of the image will
 				be interpreted as
@@ -38,9 +38,9 @@
 		</tab>
 		<tab name="Tree Options">
 			<option name="Size of sample per tree">
-				The size of sample used to train each tree. A
+				The size of the samples used to train each tree. A
 				sample contains training objects which are patches of the images
-				with a corresponding label and offset. They will be randomly sampled
+				with a corresponding label and offset. They will be uniformly sampled
 				from all available training objects for each tree.
 			</option>
 			<option name="Number of split functions">
@@ -66,15 +66,14 @@
 				The number of trees to learn.
 			</option>
 			<option name="Use static random seed">
-				Select to use a seed and be able to reproduce the
-				learning.
+				Select to choose a seed to get reproducible results.
 			</option>
 		</tab>
 		<tab name="Feature Selection">
 			<option name="Convert from RGB to Lab color space, if possible">
 				If selected the input images will be converted to
 				the Lab color space. Works only for 3D input images. If selected and
-				the input are 2D images, nothing will be done.
+				the input contains 2D images, nothing will be done.
 			</option>
 			<option name="Add first derivatives">
 				Select to add the first derivative in x and y
@@ -100,8 +99,8 @@
 				added.
 			</option>
 			<option name="Number of bins">
-				Select the number of bins which is the number of
-				feature channels which will be added to the feature descriptor.
+				Select the number of bins used for the histogram of oriented gradients. (This is the number of
+				feature channels which will be added to the feature descriptor.)
 			</option>
 			<option name="Apply a min and max filter (doubles the features)">
 				A minimum and maximum filter will be applied to
@@ -146,7 +145,7 @@
 		<inPort index="0" name="Input Data">
 			Input table used for learning. The table
 			must contain an image column and
-			label column which have the same size
+			labeling column which have the same size
 			in the first two dimensions.
 		</inPort>
 

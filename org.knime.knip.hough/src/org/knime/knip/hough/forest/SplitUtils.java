@@ -78,7 +78,6 @@ public final class SplitUtils {
 			final int numFunctions, final double threshold, final long seed) {
 		final SplitFunction[] splitFunctions = new SplitFunction[numFunctions];
 		final Random random = new Random(seed);
-		// TODO: better finding of thresholds
 		for (int i = 0; i < numFunctions; i++) {
 			final int channel = random.nextInt((int) patch.max(2));
 			splitFunctions[i] = new SplitFunction(
