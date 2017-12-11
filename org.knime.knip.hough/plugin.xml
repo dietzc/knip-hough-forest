@@ -29,7 +29,7 @@
    <extension
          point="org.knime.workbench.repository.categories">
       <category
-            icon="icons/missing.gif"
+            icon="icons/cube.png"
             level-id="hough"
             locked="true"
             name="Hough Forest"
