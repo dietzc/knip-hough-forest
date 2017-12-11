@@ -727,4 +727,10 @@ license terms applicable to such Node, including when such Node is
 propagated with or for interoperation with KNIME.
    </license>
 
+   <plugin
+         id="org.knime.knip.hough"
+         download-size="0"
+         install-size="0"
+         version="0.0.0"/>
+
 </feature>
