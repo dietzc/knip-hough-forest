@@ -2,7 +2,7 @@ Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: Testcases for the KNIP - Hough Forest Plugin
 Bundle-SymbolicName: org.knime.knip.hough.testing;singleton:=true
-Bundle-Version: 1.0.0.qualifier
+Bundle-Version: 1.0.1.qualifier
 Bundle-Vendor: Simon Schmid
 Fragment-Host: org.knime.knip.hough;bundle-version="[1.0.0,2.0.0)"
 Require-Bundle: org.junit;bundle-version="[4.8.2,5.0.0)",

@@ -2,7 +2,7 @@
 <feature
       id="org.knime.knip.hough.update"
       label="KNIME Image Processing - Hough Forest Plugin"
-      version="1.0.0.qualifier"
+      version="1.0.1.qualifier"
       provider-name="University of Konstanz">
 
    <includes
