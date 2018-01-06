@@ -58,6 +58,7 @@ import java.util.concurrent.Future;
 
 import org.knime.core.data.DataRow;
 import org.knime.core.data.DataTableSpec;
+import org.knime.core.data.container.CloseableRowIterator;
 import org.knime.core.node.BufferedDataTable;
 import org.knime.core.node.CanceledExecutionException;
 import org.knime.core.node.ExecutionContext;
@@ -292,17 +293,37 @@ final class HoughForestLearnerNodeModel<T extends RealType<T>, L> extends NodeMo
 		final long[] patchGap = new long[] { m_patchGapX.getIntValue(), m_patchGapY.getIntValue(), 0 };
 		final long[] patchsize = new long[] { m_patchWidth.getIntValue(), m_patchHeight.getIntValue(), -1 };
 		final List<TrainingObject<FloatType>> patches = new ArrayList<>();
-		final FeatureDescriptor<T> featureDescriptor = new FeatureDescriptor<T>(m_convertToLab.getBooleanValue(),
-				m_firstDerivative.getBooleanValue(), m_useAbsoluteFirstDerivative.getBooleanValue(),
-				m_secondDerivative.getBooleanValue(), m_useAbsoluteSecondDerivative.getBooleanValue(),
-				m_hog.getBooleanValue(), m_hogNumBins.getIntValue(), m_applyMinMax.getBooleanValue(),
-				m_useAbsolute.getBooleanValue());
+
+		// check dimensionality of the image in the first row
+		final CloseableRowIterator rowIterator = table.iterator();
+		boolean isColorImage = false;
+		if (rowIterator.hasNext()) {
+			final DataRow row = rowIterator.next();
+			if (row.getCell(imgIdx).isMissing()) {
+				throw new IllegalArgumentException("The first row contains a missing cell!");
+			}
+			final ImgPlus<T> image = ((ImgPlusValue<T>) row.getCell(imgIdx)).getImgPlus();
+			if (image.numDimensions() != 2 && !(image.numDimensions() == 3 && image.dimension(2) == 3)) {
+				throw new IllegalArgumentException("The images must be either 2D or 3D with three channels!");
+			}
+			isColorImage = image.numDimensions() == 3;
+		}
+		rowIterator.close();
+
+		final FeatureDescriptor<T> featureDescriptor = new FeatureDescriptor<T>(isColorImage,
+				m_convertToLab.getBooleanValue(), m_firstDerivative.getBooleanValue(),
+				m_useAbsoluteFirstDerivative.getBooleanValue(), m_secondDerivative.getBooleanValue(),
+				m_useAbsoluteSecondDerivative.getBooleanValue(), m_hog.getBooleanValue(), m_hogNumBins.getIntValue(),
+				m_applyMinMax.getBooleanValue(), m_useAbsolute.getBooleanValue());
 
 		final int batchSize = (int) (table.size() / Runtime.getRuntime().availableProcessors()) + 1;
 		final double progressStepSize = 0.5 / table.size();
 		ArrayList<ImgPlus<T>> listImg = new ArrayList<>(batchSize);
 		ArrayList<RandomAccessibleInterval<LabelingType<L>>> listLabelings = new ArrayList<>(batchSize);
 		for (final DataRow row : table) {
+			if (row.getCell(imgIdx).isMissing() || row.getCell(labelIdx).isMissing()) {
+				throw new IllegalArgumentException("Row '" + row.getKey() + "' contains a missing cell!");
+			}
 			listImg.add(((ImgPlusValue<T>) row.getCell(imgIdx)).getImgPlus());
 			listLabelings.add(((LabelingValue<L>) row.getCell(labelIdx)).getLabeling());
 			if (listImg.size() >= batchSize) {
@@ -429,18 +450,22 @@ final class HoughForestLearnerNodeModel<T extends RealType<T>, L> extends NodeMo
 		public List<TrainingObject<FloatType>> call() throws Exception {
 			final List<TrainingObject<FloatType>> allPatches = new ArrayList<>();
 			while (!m_images.isEmpty()) {
-				final ImgPlus<T> image = m_images.remove(0);
+				final ImgPlus<T> img = m_images.remove(0);
 				final RandomAccessibleInterval<LabelingType<L>> labeling = m_labelings.remove(0);
-				if (image.numDimensions() != 2 && !(image.numDimensions() == 3 && image.dimension(2) == 3)) {
+				if (img.numDimensions() != 2 && !(img.numDimensions() == 3 && img.dimension(2) == 3)) {
 					throw new IllegalArgumentException("The images must be either 2D or 3D with three channels!");
 				}
-				if (image.dimension(0) != labeling.dimension(0) || image.dimension(1) != labeling.dimension(1)) {
+				final boolean isColorImage = img.numDimensions() == 3;
+				if (!(isColorImage && m_featureDescriptor.isColorImage())
+						&& !(!isColorImage && !m_featureDescriptor.isColorImage())) {
+					throw new IllegalArgumentException("All input images must be either color or grayscale!");
+				}
+				if (img.dimension(0) != labeling.dimension(0) || img.dimension(1) != labeling.dimension(1)) {
 					throw new IllegalArgumentException(
 							"The image and label must have the same size in the first two dimensions!");
 				}
 				m_exec.checkCanceled();
-				final Grid<FloatType> grid = Grids.createGrid(m_featureDescriptor.apply(image), m_patchGap,
-						m_patchSize);
+				final Grid<FloatType> grid = Grids.createGrid(m_featureDescriptor.apply(img), m_patchGap, m_patchSize);
 				final RandomAccess<RandomAccessibleInterval<FloatType>> raGrid = grid.randomAccess();
 				final LabelRegions<L> labelRegions = new LabelRegions<>(labeling);
 				for (int i = 0; i < grid.dimension(0); i++) {

@@ -64,8 +64,8 @@ public final class HoughForestUtils {
 	/**
 	 * Computes class probabilities.
 	 * 
-	 * @param size0 number of elements witch class 0
-	 * @param size1 number of elements witch class 1
+	 * @param size0 number of elements with class 0
+	 * @param size1 number of elements with class 1
 	 * @param trainingSet the whole training set
 	 * @return class probabilities
 	 */

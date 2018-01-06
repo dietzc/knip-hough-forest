@@ -73,6 +73,8 @@ public final class HoughForestModelPortObjectSpec extends AbstractSimplePortObje
 
 	private static final String CFGKEY_PATCH_HEIGHT = "Patch height";
 
+	private static final String CFGKEY_INPUT_IMAGE = "Applicable to color images";
+
 	private static final String CFGKEY_FEATURES = "Features";
 
 	private static final String CFGKEY_CONVERT_TO_LAB = "Convert to Lab color space";
@@ -98,6 +100,8 @@ public final class HoughForestModelPortObjectSpec extends AbstractSimplePortObje
 	private long m_patchWidth;
 
 	private long m_patchHeight;
+
+	private boolean m_learnedColorImages;
 
 	private boolean m_convertToLab;
 
@@ -130,6 +134,7 @@ public final class HoughForestModelPortObjectSpec extends AbstractSimplePortObje
 		m_patchWidth = forest.getPatchSize()[0];
 		m_patchHeight = forest.getPatchSize()[1];
 		final FeatureDescriptor<?> featureDescriptor = forest.getFeatureDescriptor();
+		m_learnedColorImages = featureDescriptor.isColorImage();
 		m_convertToLab = featureDescriptor.isConvertToLab();
 		m_addFirstDerivative = featureDescriptor.isAddFirstDerivative();
 		m_useAbsoluteFirstDerivative = featureDescriptor.isUseAbsoluteFirstDerivative();
@@ -149,6 +154,7 @@ public final class HoughForestModelPortObjectSpec extends AbstractSimplePortObje
 		m_numTrees = model.getInt(CFGKEY_NUM_TREES);
 		m_patchWidth = model.getLong(CFGKEY_PATCH_WIDTH);
 		m_patchHeight = model.getLong(CFGKEY_PATCH_HEIGHT);
+		m_learnedColorImages = model.getBoolean(CFGKEY_INPUT_IMAGE);
 		final Config configFeatures = model.getConfig(CFGKEY_FEATURES);
 		m_convertToLab = configFeatures.getBoolean(CFGKEY_CONVERT_TO_LAB);
 		m_addFirstDerivative = configFeatures.getBoolean(CFGKEY_ADD_1ST_DERIV);
@@ -169,6 +175,7 @@ public final class HoughForestModelPortObjectSpec extends AbstractSimplePortObje
 		model.addInt(CFGKEY_NUM_TREES, m_numTrees);
 		model.addLong(CFGKEY_PATCH_WIDTH, m_patchWidth);
 		model.addLong(CFGKEY_PATCH_HEIGHT, m_patchHeight);
+		model.addBoolean(CFGKEY_INPUT_IMAGE, m_learnedColorImages);
 		final Config configFeatures = model.addConfig(CFGKEY_FEATURES);
 		configFeatures.addBoolean(CFGKEY_CONVERT_TO_LAB, m_convertToLab);
 		configFeatures.addBoolean(CFGKEY_ADD_1ST_DERIV, m_addFirstDerivative);

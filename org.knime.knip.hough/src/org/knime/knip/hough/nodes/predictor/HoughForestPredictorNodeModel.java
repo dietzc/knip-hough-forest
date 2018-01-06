@@ -449,6 +449,9 @@ final class HoughForestPredictorNodeModel<T extends RealType<T>> extends NodeMod
 		@SuppressWarnings("unchecked")
 		@Override
 		public DataCell[] getCells(DataRow row) {
+			if (row.getCell(m_imageColIdx).isMissing()) {
+				throw new IllegalArgumentException("Row '" + row.getKey() + "' contains a missing cell!");
+			}
 			final ImgPlus<T> img = ((ImgPlusValue<T>) row.getCell(m_imageColIdx)).getImgPlus();
 			if (img.numDimensions() != 2 && !(img.numDimensions() == 3 && img.dimension(2) == 3)) {
 				throw new IllegalArgumentException(
@@ -461,6 +464,13 @@ final class HoughForestPredictorNodeModel<T extends RealType<T>> extends NodeMod
 
 			// Get the feature descriptor stored in the model and apply it to the image
 			final FeatureDescriptor<T> featureDescriptor = (FeatureDescriptor<T>) m_houghForest.getFeatureDescriptor();
+			final boolean isColorImage = img.numDimensions() == 3;
+			if (isColorImage && !featureDescriptor.isColorImage()) {
+				throw new IllegalArgumentException("Predictions with this model can only be done on grayscale images!");
+			}
+			if (!isColorImage && featureDescriptor.isColorImage()) {
+				throw new IllegalArgumentException("Predictions with this model can only be done on color images!");
+			}
 			final RandomAccessibleInterval<FloatType> featureImg = featureDescriptor.apply(img);
 
 			// === Do the voting for each scale ===

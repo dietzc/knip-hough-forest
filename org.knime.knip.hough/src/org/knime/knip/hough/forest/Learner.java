@@ -168,7 +168,7 @@ public final class Learner {
 	 * @param minSizeSample min size of the samples of a leaf
 	 * @param sizeOfSample size of the sample for each tree to learn on
 	 * @param numTrees number of trees
-	 * @param numSplitFunctions number of splitfunctions to create
+	 * @param numSplitFunctions number of split functions to create
 	 * @param threshold threshold value
 	 * @param exec execution context
 	 * @param m_progress
@@ -185,8 +185,8 @@ public final class Learner {
 		LOGGER.info("Learning " + numTrees + " hough trees...");
 		final Random random = new Random(seed);
 		for (int i = 1; i <= numTrees; i++) {
-			threads.add(new TrainParallel<>(new PatchSample<>(trainingSet.getElementsOfSample()), sizeOfSample,
-					maxDepth, minSizeSample, numSplitFunctions, threshold, exec, 0.5 / numTrees, i, random.nextLong()));
+			threads.add(new TrainParallel<>(trainingSet, sizeOfSample, maxDepth, minSizeSample, numSplitFunctions,
+					threshold, exec, 0.5 / numTrees, i, random.nextLong()));
 		}
 		try {
 			final List<Future<SplitNode>> invokeAll = es.invokeAll(threads);

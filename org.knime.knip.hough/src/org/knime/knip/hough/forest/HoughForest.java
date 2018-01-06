@@ -121,7 +121,7 @@ public final class HoughForest implements Externalizable {
 			tree.readExternal(in);
 			m_listTrees.add(tree);
 		}
-		m_featureDescriptor = new FeatureDescriptor<>();
+		m_featureDescriptor = new FeatureDescriptor<>(false);
 		m_featureDescriptor.readExternal(in);
 	}
 

@@ -51,8 +51,7 @@ package org.knime.knip.hough.forest;
 import net.imglib2.RandomAccessibleInterval;
 
 /**
- * Holds the class and offset of a patch to provide a fast access during
- * learning.
+ * Holds the class and offset of a patch to provide a fast access during learning.
  * 
  * @author Simon Schmid, University of Konstanz
  */

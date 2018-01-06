@@ -62,10 +62,7 @@ import org.scijava.plugin.PluginIndex;
 
 import net.imagej.ops.OpService;
 import net.imglib2.Cursor;
-import net.imglib2.FinalInterval;
 import net.imglib2.RandomAccessibleInterval;
-import net.imglib2.algorithm.gradient.PartialDerivative;
-import net.imglib2.algorithm.neighborhood.RectangleShape;
 import net.imglib2.converter.Converter;
 import net.imglib2.converter.Converters;
 import net.imglib2.type.numeric.RealType;
@@ -79,6 +76,12 @@ import net.imglib2.view.Views;
  * @author Simon Schmid, University of Konstanz
  */
 public class FeatureDescriptor<T extends RealType<T>> implements Externalizable {
+
+	private final OpService m_ops;
+
+	private final List<Feature> m_feaures;
+
+	private boolean m_isColorImage;
 
 	private boolean m_convertToLab;
 
@@ -106,7 +109,15 @@ public class FeatureDescriptor<T extends RealType<T>> implements Externalizable 
 	 * Creates a feature descriptor which can be applied onto an image. All parameters take the default value, i.e. no
 	 * feature will be extracted.
 	 */
-	public FeatureDescriptor() {
+	public FeatureDescriptor(final boolean numInputChannels) {
+		m_ops = new Context(new PluginIndex(
+				new DefaultPluginFinder(new ResourceAwareClassLoader(getClass().getClassLoader(), getClass()))))
+						.getService(OpService.class);
+
+		m_feaures = new ArrayList<>();
+
+		m_isColorImage = numInputChannels;
+
 		m_converterToFloatType = new Converter<T, FloatType>() {
 			@Override
 			public void convert(final T arg0, final FloatType arg1) {
@@ -139,11 +150,11 @@ public class FeatureDescriptor<T extends RealType<T>> implements Externalizable 
 	 * @param applyMinMax
 	 * @param useAbsoluteValues
 	 */
-	public FeatureDescriptor(final boolean convertToLab, final boolean firstDerivative,
+	public FeatureDescriptor(final boolean numInputChannels, final boolean convertToLab, final boolean firstDerivative,
 			final boolean useAbsoluteFirstDerivative, final boolean secondDerivative,
 			final boolean useAbsoluteSecondDerivative, final boolean hog, final int numberHog,
 			final boolean applyMinMax, final boolean useAbsoluteValues) {
-		this();
+		this(numInputChannels);
 		this.setConvertToLab(convertToLab);
 		this.setAddFirstDerivative(firstDerivative);
 		this.setUseAbsoluteFirstDerivative(useAbsoluteFirstDerivative);
@@ -153,6 +164,21 @@ public class FeatureDescriptor<T extends RealType<T>> implements Externalizable 
 		this.setHogNumBins(numberHog);
 		this.setApplyMinMax(applyMinMax);
 		this.setUseAbsoluteValues(useAbsoluteValues);
+
+		fillFeatures();
+	}
+
+	private void fillFeatures() {
+		if (isAddFirstDerivative()) {
+			m_feaures.add(new DerivativesFeature(isAddSecondDerivative(), isUseAbsoluteFirstDerivative(),
+					isUseAbsoluteSecondDerivative()));
+		}
+		if (isAddHoG()) {
+			m_feaures.add(new HoGFeature(getHogNumBins()));
+		}
+		if (isApplyMinMax()) {
+			m_feaures.add(new MinMaxFilterFeature());
+		}
 	}
 
 	/**
@@ -164,11 +190,11 @@ public class FeatureDescriptor<T extends RealType<T>> implements Externalizable 
 	 */
 	@SuppressWarnings("unchecked")
 	public RandomAccessibleInterval<FloatType> apply(RandomAccessibleInterval<T> in) {
-		final OpService ops = new Context(new PluginIndex(
-				new DefaultPluginFinder(new ResourceAwareClassLoader(getClass().getClassLoader(), getClass()))))
-						.getService(OpService.class);
-
-		final List<RandomAccessibleInterval<FloatType>> list = new ArrayList<>();
+		if (!(in.numDimensions() == 2 && !m_isColorImage)
+				&& !(in.numDimensions() == 3 && in.dimension(2) == 3 && m_isColorImage)) {
+			throw new IllegalArgumentException("Input image has wrong dimensionality!");
+		}
+		List<RandomAccessibleInterval<FloatType>> list = new ArrayList<>();
 		final RandomAccessibleInterval<FloatType> inFloatType;
 		if (in.numDimensions() == 3 && in.dimension(2) == 3 && isConvertToLab()) {
 			// convert from RGB to LAB space
@@ -176,7 +202,7 @@ public class FeatureDescriptor<T extends RealType<T>> implements Externalizable 
 			final RandomAccessibleInterval<FloatType>[] outArray = new RandomAccessibleInterval[in.numDimensions()];
 			for (int i = 0; i < inArray.length; i++) {
 				inArray[i] = Views.hyperSlice(Converters.convert(in, m_converterToFloatType, new FloatType()), 2, i);
-				outArray[i] = Views.hyperSlice(ops.create().img(in, new FloatType()), 2, i);
+				outArray[i] = Views.hyperSlice(m_ops.create().img(in, new FloatType()), 2, i);
 			}
 			convertRGBtoLAB(outArray, inArray);
 
@@ -198,99 +224,15 @@ public class FeatureDescriptor<T extends RealType<T>> implements Externalizable 
 			}
 		}
 
-		if (isAddFirstDerivative()) {
-			// compute derivatives and add them to the list
-			final List<RandomAccessibleInterval<FloatType>> derivatives = computeDerivatives(inFloatType, ops);
-			list.addAll(derivatives);
+		// apply features
+		for (final Feature feature : m_feaures) {
+			list = feature.apply(inFloatType, list, m_ops);
 		}
 
-		if (isAddHoG()) {
-			// compute hog features and add them to the list
-			final RandomAccessibleInterval<FloatType> hog = (RandomAccessibleInterval<FloatType>) ops
-					.op(HistogramOfOrientedGradients2D.class, null, in, getHogNumBins(), 2).calculate();
-			for (int i = 0; i < hog.dimension(2); i++) {
-				list.add(Views.hyperSlice(hog, 2, i));
-			}
-		}
-
-		final RandomAccessibleInterval<FloatType> stackedOuput;
-		if (isApplyMinMax()) {
-			// apply a min and max filter
-			final List<RandomAccessibleInterval<FloatType>> listMaxMin = new ArrayList<>();
-			final RectangleShape shape = new RectangleShape(2, false);
-			while (!list.isEmpty()) {
-				// min
-				final RandomAccessibleInterval<FloatType> min = ops.create()
-						.img(new FinalInterval(in.dimension(0), in.dimension(1)), new FloatType());
-				ops.filter().min(Views.flatIterable(min), list.get(0), shape);
-				listMaxMin.add(min);
-				// max
-				final RandomAccessibleInterval<FloatType> max = ops.create()
-						.img(new FinalInterval(in.dimension(0), in.dimension(1)), new FloatType());
-				ops.filter().max(Views.flatIterable(max), list.remove(0), shape);
-				listMaxMin.add(max);
-			}
-			stackedOuput = Views.stack(listMaxMin);
-		} else
-			stackedOuput = Views.stack(list);
-
+		final RandomAccessibleInterval<FloatType> stackedOuput = Views.stack(list);
 		if (isUseAbsoluteValues())
 			return Converters.convert(stackedOuput, m_converterToAbsoluteValues, new FloatType());
 		return stackedOuput;
-	}
-
-	/**
-	 * Computes first and (if wanted) second derivatives.
-	 * 
-	 * @param inFloatType input {@link RandomAccessibleInterval}
-	 * @param ops OpService
-	 * @return first (and second) derivatives in a list of {@link RandomAccessibleInterval}s
-	 */
-	private List<RandomAccessibleInterval<FloatType>> computeDerivatives(
-			final RandomAccessibleInterval<FloatType> inFloatType, final OpService ops) {
-		final List<RandomAccessibleInterval<FloatType>> list = new ArrayList<>();
-		final RandomAccessibleInterval<FloatType> inFloatType2D;
-		if (inFloatType.numDimensions() > 2) {
-			inFloatType2D = Views.dropSingletonDimensions(
-					Views.interval(inFloatType, new long[3], new long[] { inFloatType.max(0), inFloatType.max(1), 0 }));
-		} else {
-			inFloatType2D = inFloatType;
-		}
-		// add first derivatives to the list
-		final RandomAccessibleInterval<FloatType> firstDerivative0 = ops.create().img(inFloatType2D, new FloatType());
-		PartialDerivative.gradientCentralDifference(Views.extendMirrorSingle(inFloatType2D), firstDerivative0, 0);
-		final RandomAccessibleInterval<FloatType> firstDerivative1 = ops.create().img(inFloatType2D, new FloatType());
-		PartialDerivative.gradientCentralDifference(Views.extendMirrorSingle(inFloatType2D), firstDerivative1, 1);
-
-		if (isUseAbsoluteFirstDerivative()) {
-			list.add(Converters.convert(firstDerivative0, m_converterToAbsoluteValues, new FloatType()));
-			list.add(Converters.convert(firstDerivative1, m_converterToAbsoluteValues, new FloatType()));
-		} else {
-			list.add(firstDerivative0);
-			list.add(firstDerivative1);
-		}
-
-		if (isAddSecondDerivative()) {
-			// add second derivatives to the list
-			final RandomAccessibleInterval<FloatType> secondDerivative0 = ops.create().img(inFloatType2D,
-					new FloatType());
-			PartialDerivative.gradientCentralDifference(Views.extendMirrorDouble(firstDerivative0), secondDerivative0,
-					0);
-			final RandomAccessibleInterval<FloatType> secondDerivative1 = ops.create().img(inFloatType2D,
-					new FloatType());
-			PartialDerivative.gradientCentralDifference(Views.extendMirrorDouble(firstDerivative1), secondDerivative1,
-					1);
-
-			if (isUseAbsoluteSecondDerivative()) {
-				list.add(Converters.convert(secondDerivative0, m_converterToAbsoluteValues, new FloatType()));
-				list.add(Converters.convert(secondDerivative1, m_converterToAbsoluteValues, new FloatType()));
-			} else {
-				list.add(secondDerivative0);
-				list.add(secondDerivative1);
-			}
-		}
-		return list;
-
 	}
 
 	/**
@@ -327,6 +269,7 @@ public class FeatureDescriptor<T extends RealType<T>> implements Externalizable 
 
 	@Override
 	public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
+		m_isColorImage = in.readBoolean();
 		setConvertToLab(in.readBoolean());
 		setAddFirstDerivative(in.readBoolean());
 		setAddSecondDerivative(in.readBoolean());
@@ -334,10 +277,13 @@ public class FeatureDescriptor<T extends RealType<T>> implements Externalizable 
 		setHogNumBins(in.readInt());
 		setApplyMinMax(in.readBoolean());
 		setUseAbsoluteValues(in.readBoolean());
+
+		fillFeatures();
 	}
 
 	@Override
 	public void writeExternal(ObjectOutput out) throws IOException {
+		out.writeBoolean(m_isColorImage);
 		out.writeBoolean(isConvertToLab());
 		out.writeBoolean(isAddFirstDerivative());
 		out.writeBoolean(isAddSecondDerivative());
@@ -471,6 +417,10 @@ public class FeatureDescriptor<T extends RealType<T>> implements Externalizable 
 	 */
 	public void setUseAbsoluteValues(boolean useAbsoluteValues) {
 		this.m_useAbsoluteValues = useAbsoluteValues;
+	}
+
+	public boolean isColorImage() {
+		return m_isColorImage;
 	}
 
 	@Override

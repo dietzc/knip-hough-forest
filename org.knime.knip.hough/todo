@@ -1,7 +1,5 @@
 code:
 - investigate weighting of votes of different scales
-- images used for prediction must have same format as used for learning (size of dimensions)
-- missing value handling
 
 entanglement:
 - breadth first
