@@ -46,109 +46,142 @@
  * --------------------------------------------------------------------- *
  *
  */
-package org.knime.knip.hough.forest;
+package org.knime.knip.hough.forest.node;
 
-import java.io.ObjectInput;
 import java.io.Serializable;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import org.knime.knip.hough.features.FeatureDescriptor;
-import org.knime.knip.hough.forest.node.SplitNode;
-
 /**
- * This objects holds all relevant parameters of a hough forest.
+ * TODO Interface for a node of a hough tree.
  * 
  * @author Simon Schmid, University of Konstanz
  */
-public final class HoughForest implements Serializable {
+public abstract class Node implements Serializable {
 
 	private static final long serialVersionUID = 1L;
 
-	private List<SplitNode> m_listTrees;
-	private long[] m_patchSize;
-	private FeatureDescriptor<?> m_featureDescriptor;
+	private int m_depth;
+	private int m_nodeIdx;
+	private double[] m_probabilities;
+	private List<int[]> m_offsets;
+	private SplitNode m_parent;
 
-	/**
-	 * Creates an empty object of this class which needs to be filled by invoking {@link #readExternal(ObjectInput)}.
-	 */
-	public HoughForest() {
-		m_listTrees = new ArrayList<>();
-		m_patchSize = new long[2];
+	private double[] m_offsetMean;
+
+	public Node(final int depth, final int nodeIdx, final double[] classProbabilities, final List<int[]> offsets,
+			final SplitNode parent) {
+		m_depth = depth;
+		m_nodeIdx = nodeIdx;
+		m_probabilities = classProbabilities;
+		m_offsets = offsets;
+		m_parent = parent;
+		m_offsetMean = offsetMean(offsets);
 	}
 
 	/**
-	 * Creates an object of this class with all relevant parameters.
-	 * 
-	 * @param listTrees list of trees
-	 * @param patchSize size of the patches
-	 * @param featureDescriptor the used {@link FeatureDescriptor}
+	 * Empty no-arg constructor used for deserialization.
 	 */
-	public HoughForest(final List<SplitNode> listTrees, final long[] patchSize,
-			final FeatureDescriptor<?> featureDescriptor) {
-		m_listTrees = listTrees;
-		m_patchSize = patchSize;
-		m_featureDescriptor = featureDescriptor;
+	protected Node() {
+	}
+
+	public List<int[]> getOffsetVectors() {
+		return m_offsets;
+	}
+
+	private double[] offsetMean(final List<int[]> offsets) {
+		final double[] offsetMean = new double[] { 0, 0 };
+		if (offsets.size() == 0) {
+			return offsetMean;
+		}
+		for (final int[] o : offsets) {
+			offsetMean[0] += o[0];
+			offsetMean[1] += o[1];
+		}
+		offsetMean[0] /= offsets.size();
+		offsetMean[1] /= offsets.size();
+
+		return offsetMean;
+	}
+
+	public double[] getOffsetMean() {
+		return m_offsetMean;
+
+	}
+
+	public double getProbability(final int idx) {
+		return getProbabilities()[idx];
 	}
 
 	/**
-	 * @return {@link List} of all trees
+	 * @return the probabilities
 	 */
-	public List<SplitNode> getListOfTrees() {
-		return m_listTrees;
+	public double[] getProbabilities() {
+		return m_probabilities;
 	}
 
 	/**
-	 * @return the size of the patches which has been used for learning
+	 * @return the nodeIdx
 	 */
-	public long[] getPatchSize() {
-		return m_patchSize;
+	public int getNodeIdx() {
+		return m_nodeIdx;
 	}
 
 	/**
-	 * @return the {@link FeatureDescriptor} used for learning
+	 * @return the depth
 	 */
-	public FeatureDescriptor<?> getFeatureDescriptor() {
-		return m_featureDescriptor;
+	public int getDepth() {
+		return m_depth;
+	}
+
+	/**
+	 * @return the parent
+	 */
+	public SplitNode getParent() {
+		return m_parent;
 	}
 
 	@Override
 	public int hashCode() {
 		final int prime = 31;
 		int result = 1;
-		result = prime * result + ((m_featureDescriptor == null) ? 0 : m_featureDescriptor.hashCode());
-		result = prime * result + ((m_listTrees == null) ? 0 : m_listTrees.hashCode());
-		result = prime * result + Arrays.hashCode(m_patchSize);
+		result = prime * result + m_depth;
+		result = prime * result + m_nodeIdx;
+		result = prime * result + Arrays.hashCode(m_offsetMean);
+		result = prime * result + ((m_offsets == null) ? 0 : m_offsets.hashCode());
+		result = prime * result + ((m_parent == null) ? 0 : m_parent.hashCode());
+		result = prime * result + Arrays.hashCode(m_probabilities);
 		return result;
 	}
 
 	@Override
 	public boolean equals(Object obj) {
-		if (this == obj) {
+		if (this == obj)
 			return true;
-		}
-		if (!(obj instanceof HoughForest)) {
+		if (obj == null)
 			return false;
-		}
-		HoughForest other = (HoughForest) obj;
-		if (m_featureDescriptor == null) {
-			if (other.m_featureDescriptor != null) {
+		if (getClass() != obj.getClass())
+			return false;
+		Node other = (Node) obj;
+		if (m_depth != other.m_depth)
+			return false;
+		if (m_nodeIdx != other.m_nodeIdx)
+			return false;
+		if (!Arrays.equals(m_offsetMean, other.m_offsetMean))
+			return false;
+		if (m_offsets == null) {
+			if (other.m_offsets != null)
 				return false;
-			}
-		} else if (!m_featureDescriptor.equals(other.m_featureDescriptor)) {
+		} else if (!Arrays.deepEquals(m_offsets.toArray(), other.m_offsets.toArray()))
 			return false;
-		}
-		if (m_listTrees == null) {
-			if (other.m_listTrees != null) {
-				return false;
-			}
-		} else if (!Arrays.deepEquals(m_listTrees.toArray(), other.m_listTrees.toArray())) {
+		// TODO parent cannot be compared, because it leads to a recurrent loop
+		// if (m_parent == null) {
+		// if (other.m_parent != null)
+		// return false;
+		// } else if (!m_parent.equals(other.m_parent))
+		// return false;
+		if (!Arrays.equals(m_probabilities, other.m_probabilities))
 			return false;
-		}
-		if (!Arrays.equals(m_patchSize, other.m_patchSize)) {
-			return false;
-		}
 		return true;
 	}
 

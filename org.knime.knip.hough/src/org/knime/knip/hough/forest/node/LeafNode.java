@@ -46,79 +46,75 @@
  * --------------------------------------------------------------------- *
  *
  */
-package org.knime.knip.hough.forest;
+package org.knime.knip.hough.forest.node;
 
-import java.util.Arrays;
+import org.knime.knip.hough.forest.training.SampleTrainingObject;
 
 /**
- * Holds parameters of a split function of a Hough tree.
+ * Represents a leaf node of a Hough tree.
  * 
  * @author Simon Schmid, University of Konstanz
  */
-public final class SplitFunction {
+public class LeafNode extends Node {
 
-	private final int[][] indices;
-	private final double threshold;
+	private static final long serialVersionUID = 1L;
+
+	private final int m_numElementsOfClazz0;
+	private final int m_numElementsOfClazz1;
 
 	/**
-	 * Creates a new {@link SplitFunction}.
+	 * Creates an object of this class with all relevant parameters.
 	 * 
-	 * @param indices the indices
-	 * @param threshold the threshold
+	 * @param sample the {@link SampleTrainingObject}
+	 * @param classProbabilities the class probabilities
+	 * @param depth depth of the node
 	 */
-	public SplitFunction(final int[][] indices, final double threshold) {
-		this.indices = indices;
-		this.threshold = threshold;
+	public LeafNode(final SampleTrainingObject<?> sample, final double[] classProbabilities, final int depth,
+			final int nodeIdx, final SplitNode parent) {
+		super(depth, nodeIdx, classProbabilities, sample.getOffsets(), parent);
+		m_numElementsOfClazz0 = sample.getNumberElementsOfClazz0();
+		m_numElementsOfClazz1 = sample.getNumberElementsOfClazz1();
 	}
 
 	/**
-	 * @param dimension the dimension
-	 * @return indices of the given dimension
+	 * Creates a dummy object of this class.
 	 */
-	public int[] getIndex(final int dimension) {
-		return indices[dimension];
+	public LeafNode() {
+		super(0, 0, null, null, null);
+		m_numElementsOfClazz0 = 0;
+		m_numElementsOfClazz1 = 0;
 	}
 
-	/**
-	 * @return all indices
-	 */
-	public int[][] getIndices() {
-		return indices;
+	public int getNumElementsOfClazz0() {
+		return m_numElementsOfClazz0;
 	}
 
-	/**
-	 * @return the threshold
-	 */
-	public double getThreshold() {
-		return threshold;
+	public int getNumElementsOfClazz1() {
+		return m_numElementsOfClazz1;
 	}
 
 	@Override
 	public int hashCode() {
 		final int prime = 31;
-		int result = 1;
-		result = prime * result + Arrays.deepHashCode(indices);
-		long temp;
-		temp = Double.doubleToLongBits(threshold);
-		result = prime * result + (int) (temp ^ (temp >>> 32));
+		int result = super.hashCode();
+		result = prime * result + m_numElementsOfClazz0;
+		result = prime * result + m_numElementsOfClazz1;
 		return result;
 	}
 
 	@Override
 	public boolean equals(Object obj) {
-		if (this == obj) {
+		if (this == obj)
 			return true;
-		}
-		if (!(obj instanceof SplitFunction)) {
+		if (!super.equals(obj))
 			return false;
-		}
-		SplitFunction other = (SplitFunction) obj;
-		if (!Arrays.deepEquals(indices, other.indices)) {
+		if (getClass() != obj.getClass())
 			return false;
-		}
-		if (Double.doubleToLongBits(threshold) != Double.doubleToLongBits(other.threshold)) {
+		LeafNode other = (LeafNode) obj;
+		if (m_numElementsOfClazz0 != other.m_numElementsOfClazz0)
 			return false;
-		}
+		if (m_numElementsOfClazz1 != other.m_numElementsOfClazz1)
+			return false;
 		return true;
 	}
 

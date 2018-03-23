@@ -52,6 +52,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
+import org.knime.knip.hough.forest.training.SampleTrainingObject;
+import org.knime.knip.hough.forest.training.TrainingObject;
+
 import net.imglib2.type.numeric.RealType;
 
 /**
@@ -70,8 +73,8 @@ public final class HoughForestUtils {
 	 * @return class probabilities
 	 */
 	public static <T extends RealType<T>> double[] computeClassProbabilities(final int size0, final int size1,
-			final PatchSample<T> trainingSet) {
-		double[] probability = new double[2];
+			final SampleTrainingObject<T> trainingSet) {
+		final double[] probability = new double[2];
 		if (size0 == 0) {
 			if (size1 == 0) {
 				probability[0] = 0.5;
@@ -99,20 +102,20 @@ public final class HoughForestUtils {
 	/**
 	 * Creates a random sample of patches.
 	 * 
-	 * @param sample the {@link PatchSample} to sample from
+	 * @param sample the {@link SampleTrainingObject} to sample from
 	 * @param size the size of the smaple to create
 	 * @return the random sample
 	 */
-	public static <T extends RealType<T>> PatchSample<T> randomSample(final PatchSample<T> sample, final int size,
-			final long seed) {
-		List<TrainingObject<T>> listOfSample = sample.getElementsOfSample();
-		List<TrainingObject<T>> randomSample = new ArrayList<>();
-		Random randomGenerator = new Random(seed);
+	public static <T extends RealType<T>> SampleTrainingObject<T> randomSample(final SampleTrainingObject<T> sample,
+			final int size, final long seed) {
+		final List<TrainingObject<T>> listOfSample = sample.getElementsOfSample();
+		final List<TrainingObject<T>> randomSample = new ArrayList<>();
+		final Random randomGenerator = new Random(seed);
 		for (int i = 0; i < size; i++) {
 			int index = randomGenerator.nextInt(listOfSample.size());
 			randomSample.add(listOfSample.get(index));
 		}
-		return new PatchSample<>(randomSample);
+		return new SampleTrainingObject<>(randomSample);
 	}
 
 }

@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE knimeNode PUBLIC "-//UNIKN//DTD KNIME Node 2.0//EN" "http://www.knime.org/Node.dtd">
+<knimeNode icon="default.png" type="Visualizer">
+	<name>Hough Forest Evaluator</name>
+
+	<shortDescription>Learns a Hough forest used for object detection.</shortDescription>
+
+	<fullDescription>
+		<intro>
+			Learns a Hough forest as proposed in
+			<i>Class-Specific Hough Forests for Object Detection</i>
+			by Juergen Gall and Victor Lempitsky.
+			<br />
+			A Hough forest can be used for
+			object detection in images and is a
+			special kind of random forest
+			using a
+			generalized form of a Hough
+			transform to give probabilistic
+			votes for the location of the searched
+			objects.
+		</intro>
+
+		<tab name="Input">
+			<option name="Image column">
+				Select the image column. Can be either 2D
+				(grayscale) or 3D (color).
+			</option>
+			<option name="Labeling column">
+				Select the labeling column. The size of the first
+				two labeling dimensions must be the same as the size of the image. The
+				values of the labels
+				do
+				not care, every labeled part of the image will
+				be interpreted as
+				positive class, every non-labeled as negative.
+			</option>
+		</tab>
+		<tab name="Tree Options">
+			<option name="Size of sample per tree">
+				The size of the samples used to train each tree. A
+				sample contains training objects which are patches of the images
+				with a corresponding label and offset. They will be uniformly sampled
+				from all available training objects for each tree.
+			</option>
+			<option name="Number of split functions">
+				The number of randomly generated split functions
+				used to learn each split.
+			</option>
+			<option name="Max. threshold of split functions">
+				The maximum threshold used to generate split
+				functions. Threshold will be uniformly distributed in the range of 0
+				and the selected value.
+			</option>
+			<option name="Max. tree depth">
+				Learning of a tree will stop at the selected
+				depth.
+			</option>
+			<option name="Min. size of sample">
+				Learning of a tree will stop, if the sample is
+				smaller or equal the selected size.
+			</option>
+		</tab>
+		<tab name="Forest Options">
+			<option name="Number of trees">
+				The number of trees to learn.
+			</option>
+			<option name="Use static random seed">
+				Select to choose a seed to get reproducible results.
+			</option>
+		</tab>
+		<tab name="Feature Selection">
+			<option name="Convert from RGB to Lab color space, if possible">
+				If selected the input images will be converted to
+				the Lab color space. Works only for 3D input images. If selected and
+				the input contains 2D images, nothing will be done.
+			</option>
+			<option name="Add first derivatives">
+				Select to add the first derivative in x and y
+				direction to the feature descriptor. Two feature channels will be
+				added.
+			</option>
+			<option name="Use absolute value for first derivatives">
+				Select to use only absolute values for the first
+				derivatives.
+			</option>
+			<option name="Add second derivatives">
+				Select to add the second derivative in x and y
+				direction to the feature descriptor. Two feature channels will be
+				added.
+			</option>
+			<option name="Use absolute value for second derivatives">
+				Select to use only absolute values for the second
+				derivatives.
+			</option>
+			<option name="Add histogram of oriented gradients">
+				Select to add a histogram of oriented gradients
+				to the feature descriptor. For every bin a feature channel will be
+				added.
+			</option>
+			<option name="Number of bins">
+				Select the number of bins used for the histogram of oriented gradients. (This is the number of
+				feature channels which will be added to the feature descriptor.)
+			</option>
+			<option name="Apply a min and max filter (doubles the features)">
+				A minimum and maximum filter will be applied to
+				the whole
+				feature descriptor. Note that this operation doubles the
+				number of
+				features.
+			</option>
+			<option name="Use only absolute values">
+				Select to use only absolute values in all feature
+				channels.
+			</option>
+		</tab>
+		<tab name="Patch Extraction">
+			<option name="Patch width">
+				The width of the patches which will be extracted
+				of the images.
+			</option>
+			<option name="Patch height">
+				The height of the patches which will be extracted
+				of the images.
+			</option>
+			<option name="Horizontal stride size">
+				Defines the horizontal distance of the centers of
+				two extracted
+				neighbored
+				patches. Number of patches in horizontal direction will be
+				<i>1 + (image_width - patch_width) / stride_hor</i>
+				.
+			</option>
+			<option name="Vertical stride size">
+				Defines the vertical distance of the centers of
+				two extracted
+				neighbored
+				patches. Number of patches in vertical direction will be
+				<i>1 + (image_height - patch_height) / stride_ver</i>
+				.
+			</option>
+		</tab>
+	</fullDescription>
+	<ports>
+		<inPort index="0" name="Input Data">
+			Input table used for learning. The table
+			must contain an image column and
+			labeling column which have the same size
+			in the first two dimensions.
+		</inPort>
+
+		<outPort index="0" name="Hough Forest Model">
+			The learned hough forest model.
+		</outPort>
+	</ports>
+</knimeNode>

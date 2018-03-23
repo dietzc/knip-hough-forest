@@ -70,73 +70,74 @@ final class HoughForestPredictorNodeDialog extends DefaultNodeSettingsPane {
 	public HoughForestPredictorNodeDialog() {
 		// General
 		createNewGroup("Input");
-		addDialogComponent(new DialogComponentColumnNameSelection(HoughForestPredictorNodeModel.createColSelectModel(),
+		addDialogComponent(new DialogComponentColumnNameSelection(HoughForestPredictorConfig.createColSelectModel(),
 				"Image column", 1, true, ImgPlusValue.class));
 
 		// Patch Extraction
 		createNewGroup("Patch Extraction");
-		addDialogComponent(new DialogComponentNumber(HoughForestPredictorNodeModel.createPatchGapXModel(),
+		addDialogComponent(new DialogComponentNumber(HoughForestPredictorConfig.createPatchGapXModel(),
 				"Horizontal stride size", 1));
-		addDialogComponent(new DialogComponentNumber(HoughForestPredictorNodeModel.createPatchGapYModel(),
+		addDialogComponent(new DialogComponentNumber(HoughForestPredictorConfig.createPatchGapYModel(),
 				"Vertical stride size", 1));
 
 		// Voting
 		createNewGroup("Voting");
 		setHorizontalPlacement(true);
-		final SettingsModelBoolean scalesBoolModel1 = HoughForestPredictorNodeModel.createScalesBoolModel(1);
+		final SettingsModelBoolean scalesBoolModel1 = HoughForestPredictorConfig.createScalesBoolModel(1);
 		addDialogComponent(new DialogComponentBoolean(scalesBoolModel1, "Scale 1"));
-		final SettingsModelDouble scalesDoubleModel1 = HoughForestPredictorNodeModel.createScalesDoubleModel(1);
+		final SettingsModelDouble scalesDoubleModel1 = HoughForestPredictorConfig.createScalesDoubleModel(1);
 		addDialogComponent(new DialogComponentNumber(scalesDoubleModel1, "", 0.1));
 		setHorizontalPlacement(false);
 
 		setHorizontalPlacement(true);
-		final SettingsModelBoolean scalesBoolModel2 = HoughForestPredictorNodeModel.createScalesBoolModel(2);
+		final SettingsModelBoolean scalesBoolModel2 = HoughForestPredictorConfig.createScalesBoolModel(2);
 		addDialogComponent(new DialogComponentBoolean(scalesBoolModel2, "Scale 2"));
-		final SettingsModelDouble scalesDoubleModel2 = HoughForestPredictorNodeModel.createScalesDoubleModel(2);
+		final SettingsModelDouble scalesDoubleModel2 = HoughForestPredictorConfig.createScalesDoubleModel(2);
 		addDialogComponent(new DialogComponentNumber(scalesDoubleModel2, "", 0.1));
 		setHorizontalPlacement(false);
 
 		setHorizontalPlacement(true);
-		final SettingsModelBoolean scalesBoolModel3 = HoughForestPredictorNodeModel.createScalesBoolModel(3);
+		final SettingsModelBoolean scalesBoolModel3 = HoughForestPredictorConfig.createScalesBoolModel(3);
 		addDialogComponent(new DialogComponentBoolean(scalesBoolModel3, "Scale 3"));
-		final SettingsModelDouble scalesDoubleModel3 = HoughForestPredictorNodeModel.createScalesDoubleModel(3);
+		final SettingsModelDouble scalesDoubleModel3 = HoughForestPredictorConfig.createScalesDoubleModel(3);
 		addDialogComponent(new DialogComponentNumber(scalesDoubleModel3, "", 0.1));
 		setHorizontalPlacement(false);
 
 		setHorizontalPlacement(true);
-		final SettingsModelBoolean scalesBoolModel4 = HoughForestPredictorNodeModel.createScalesBoolModel(4);
+		final SettingsModelBoolean scalesBoolModel4 = HoughForestPredictorConfig.createScalesBoolModel(4);
 		addDialogComponent(new DialogComponentBoolean(scalesBoolModel4, "Scale 4"));
-		final SettingsModelDouble scalesDoubleModel4 = HoughForestPredictorNodeModel.createScalesDoubleModel(4);
+		final SettingsModelDouble scalesDoubleModel4 = HoughForestPredictorConfig.createScalesDoubleModel(4);
 		addDialogComponent(new DialogComponentNumber(scalesDoubleModel4, "", 0.1));
 
 		setHorizontalPlacement(false);
-		addDialogComponent(new DialogComponentNumber(HoughForestPredictorNodeModel.createSigmaModel(), "Sigma", 1));
+		addDialogComponent(new DialogComponentNumber(HoughForestPredictorConfig.createSigmaModel(), "Sigma", 1));
 
 		// Detection
 		createNewGroup("Detection");
-		final SettingsModelDouble thresholdModel = HoughForestPredictorNodeModel
+		final SettingsModelDouble thresholdModel = HoughForestPredictorConfig
 				.createThresholdMultipleDetectionDoubleModel();
-		final SettingsModelBoolean multipleDetectionBoolModel = HoughForestPredictorNodeModel
+		final SettingsModelBoolean multipleDetectionBoolModel = HoughForestPredictorConfig
 				.createMultipleDetectionBoolModel(thresholdModel);
 		addDialogComponent(new DialogComponentBoolean(multipleDetectionBoolModel, "Detect multiple objects"));
 		addDialogComponent(new DialogComponentNumber(thresholdModel, "Threshold", 0.1));
 
 		// Back Projection
 		createNewGroup("Back Projection");
-		addDialogComponent(
-				new DialogComponentNumber(HoughForestPredictorNodeModel.createSpanIntervalBackprojectionModel(),
-						"Size of the area around found maxima", 1.0));
+		addDialogComponent(new DialogComponentNumber(HoughForestPredictorConfig.createSpanIntervalBackprojectionModel(),
+				"Size of the area around found maxima", 1.0));
 
 		// Output
-		createNewGroup("Output");
-		setHorizontalPlacement(true);
+		createNewTab("Output");
 		addDialogComponent(
-				new DialogComponentBoolean(HoughForestPredictorNodeModel.createOutputVotesBoolModel(), "Votes"));
+				new DialogComponentBoolean(HoughForestPredictorConfig.createOutputVotesBoolModel(), "Votes"));
 		addDialogComponent(
-				new DialogComponentBoolean(HoughForestPredictorNodeModel.createOutputMaximaBoolModel(), "Maxima"));
-		setHorizontalPlacement(false);
-		addDialogComponent(new DialogComponentBoolean(HoughForestPredictorNodeModel.createOutputAdvancedBoolModel(),
+				new DialogComponentBoolean(HoughForestPredictorConfig.createOutputMaximaBoolModel(), "Maxima"));
+		addDialogComponent(new DialogComponentBoolean(HoughForestPredictorConfig.createOutputFeatureImgBoolModel(),
+				"Feature image"));
+		addDialogComponent(new DialogComponentBoolean(HoughForestPredictorConfig.createOutputAdvancedBoolModel(),
 				"Extended prediction labeling"));
+		addDialogComponent(new DialogComponentBoolean(HoughForestPredictorConfig.createOutputNodeIdxBoolModel(),
+				"Node index image"));
 
 		/*
 		 * Change listeners

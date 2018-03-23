@@ -46,128 +46,129 @@
  * --------------------------------------------------------------------- *
  *
  */
-package org.knime.knip.hough.forest;
+package org.knime.knip.hough.forest.node;
 
-import java.io.IOException;
-import java.io.ObjectInput;
-import java.io.ObjectOutput;
-import java.util.Arrays;
 import java.util.List;
 
-import net.imglib2.type.numeric.RealType;
+import org.knime.knip.hough.forest.split.SplitFunction;
 
 /**
- * Represents a leaf node of a Hough tree.
+ * Represents a split node of a Hough tree.
  * 
  * @author Simon Schmid, University of Konstanz
  */
-public final class LeafNode<T extends RealType<T>> implements Node {
+public final class SplitNode extends Node {
 
-	private static final long serialVersionUID = -6317737563377710160L;
+	private static final long serialVersionUID = 1L;
 
-	private double[] m_probability;
-	private int m_depth;
-	private List<int[]> m_offsets;
-	private int m_numElementsOfClazz0;
-	private int m_numElementsOfClazz1;
+	private SplitFunction m_splitFunction;
+	private Node m_leftChild;
+	private Node m_rightChild;
 
 	/**
 	 * Creates an object of this class with all relevant parameters.
 	 * 
-	 * @param sample the {@link PatchSample}
-	 * @param classProbabilities the class probabilities
-	 * @param depth depth of the node
+	 * @param splitFunction its {@link SplitFunction}
+	 * @param leftChild its left child {@link Node}
+	 * @param rightChild its right child {@link Node}
 	 */
-	public LeafNode(final PatchSample<T> sample, final double[] classProbabilities, final int depth) {
-		this.m_offsets = sample.getOffsetVectors();
-		this.m_numElementsOfClazz0 = sample.getNumberElementsOfClazz0();
-		this.m_numElementsOfClazz1 = sample.getNumberElementsOfClazz1();
-		this.m_depth = depth;
-		// compute probabilities
-		this.m_probability = classProbabilities;
+	public SplitNode(final SplitFunction splitFunction, final int depth, final int nodeIdx,
+			final double[] classProbabilities, final List<int[]> offsets, final Node leftChild, final Node rightChild,
+			final SplitNode parent) {
+		super(depth, nodeIdx, classProbabilities, offsets, parent);
+		m_splitFunction = splitFunction;
+		setLeftChild(leftChild);
+		setRightChild(rightChild);
 	}
 
 	/**
-	 * Creates an empty object of this class which needs to be filled by invoking {@link #readExternal(ObjectInput)}.
+	 * Empty no-arg constructor used for deserialization.
 	 */
-	public LeafNode() {
+	protected SplitNode() {
 	}
 
-	public List<int[]> getOffsetVectors() {
-		return m_offsets;
+	/**
+	 * Creates an object of this class with children to be added.
+	 * 
+	 * @param splitFunction its {@link SplitFunction}
+	 * @param leftChild its left child {@link Node}
+	 * @param rightChild its right child {@link Node}
+	 */
+	public SplitNode(final SplitFunction splitFunction, final int depth, final int nodeIdx, final List<int[]> offsets,
+			final double[] classProbabilities, final SplitNode parent) {
+		super(depth, nodeIdx, classProbabilities, offsets, parent);
+		m_splitFunction = splitFunction;
 	}
 
-	public double getProbability(final int idx) {
-		return m_probability[idx];
+	/**
+	 * @return the left child {@link Node}
+	 */
+	public Node getLeftChild() {
+		return m_leftChild;
 	}
 
-	public int getNumElementsOfClazz0() {
-		return m_numElementsOfClazz0;
+	/**
+	 * @return the right child {@link Node}
+	 */
+	public Node getRightChild() {
+		return m_rightChild;
 	}
 
-	public int getNumElementsOfClazz1() {
-		return m_numElementsOfClazz1;
+	/**
+	 * @return the {@link SplitFunction}
+	 */
+	public SplitFunction getSplitFunction() {
+		return m_splitFunction;
 	}
 
-	@SuppressWarnings("unchecked")
-	@Override
-	public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
-		m_offsets = (List<int[]>) in.readObject();
-		m_probability = (double[]) in.readObject();
-		m_depth = in.readInt();
-		m_numElementsOfClazz0 = in.readInt();
-		m_numElementsOfClazz1 = in.readInt();
+	/**
+	 * @param leftChild the leftChild to set
+	 */
+	public void setLeftChild(Node leftChild) {
+		m_leftChild = leftChild;
 	}
 
-	@Override
-	public void writeExternal(ObjectOutput out) throws IOException {
-		out.writeObject(m_offsets);
-		out.writeObject(m_probability);
-		out.writeInt(m_depth);
-		out.writeInt(m_numElementsOfClazz0);
-		out.writeInt(m_numElementsOfClazz1);
+	/**
+	 * @param rightChild the rightChild to set
+	 */
+	public void setRightChild(Node rightChild) {
+		m_rightChild = rightChild;
 	}
 
 	@Override
 	public int hashCode() {
 		final int prime = 31;
-		int result = 1;
-		result = prime * result + m_depth;
-		result = prime * result + m_numElementsOfClazz0;
-		result = prime * result + m_numElementsOfClazz1;
-		result = prime * result + ((m_offsets == null) ? 0 : m_offsets.hashCode());
-		result = prime * result + Arrays.hashCode(m_probability);
+		int result = super.hashCode();
+		result = prime * result + ((m_leftChild == null) ? 0 : m_leftChild.hashCode());
+		result = prime * result + ((m_rightChild == null) ? 0 : m_rightChild.hashCode());
+		result = prime * result + ((m_splitFunction == null) ? 0 : m_splitFunction.hashCode());
 		return result;
 	}
 
 	@Override
 	public boolean equals(Object obj) {
-		if (this == obj) {
+		if (this == obj)
 			return true;
-		}
-		if (!(obj instanceof LeafNode)) {
+		if (!super.equals(obj))
 			return false;
-		}
-		LeafNode<?> other = (LeafNode<?>) obj;
-		if (m_depth != other.m_depth) {
+		if (getClass() != obj.getClass())
 			return false;
-		}
-		if (m_numElementsOfClazz0 != other.m_numElementsOfClazz0) {
-			return false;
-		}
-		if (m_numElementsOfClazz1 != other.m_numElementsOfClazz1) {
-			return false;
-		}
-		if (m_offsets == null) {
-			if (other.m_offsets != null) {
+		SplitNode other = (SplitNode) obj;
+		if (m_leftChild == null) {
+			if (other.m_leftChild != null)
 				return false;
-			}
-		} else if (!Arrays.deepEquals(m_offsets.toArray(), other.m_offsets.toArray())) {
+		} else if (!m_leftChild.equals(other.m_leftChild))
 			return false;
-		}
-		if (!Arrays.equals(m_probability, other.m_probability)) {
+		if (m_rightChild == null) {
+			if (other.m_rightChild != null)
+				return false;
+		} else if (!m_rightChild.equals(other.m_rightChild))
 			return false;
-		}
+		if (m_splitFunction == null) {
+			if (other.m_splitFunction != null)
+				return false;
+		} else if (!m_splitFunction.equals(other.m_splitFunction))
+			return false;
 		return true;
 	}
 

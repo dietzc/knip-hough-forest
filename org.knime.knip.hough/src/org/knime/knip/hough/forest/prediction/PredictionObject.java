@@ -46,53 +46,61 @@
  * --------------------------------------------------------------------- *
  *
  */
-package org.knime.knip.hough.forest;
+package org.knime.knip.hough.forest.prediction;
 
 import java.util.ArrayList;
+import java.util.List;
+
+import org.knime.knip.hough.forest.node.LeafNode;
+import org.knime.knip.hough.forest.node.Node;
+import org.knime.knip.hough.forest.training.PatchObject;
 
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.type.numeric.RealType;
 
 /**
- * The predictions of a patch are written into this object to provide a fast
- * access during back projection.
+ * The predictions of a patch are written into this object to provide a fast access during back projection.
  * 
  * @author Simon Schmid, University of Konstanz
  */
-public final class PredictionObject<T extends RealType<T>> {
-	private final RandomAccessibleInterval<T> patch;
-	private final ArrayList<LeafNode<T>> predictions;
+public final class PredictionObject<T extends RealType<T>> extends PatchObject<T> {
+
+	// collectes predicted leaf nodes of different trees
+	private final List<LeafNode> m_predictions;
+
+	private final int[] m_patchMid;
 
 	/**
-	 * Creates a new {@link PredictionObject} with the given patch. Its
-	 * predictions will be empty on initialization and need to be added during
-	 * the prediction.
+	 * Creates a new {@link PredictionObject} with the given patch. Its predictions will be empty on initialization and
+	 * need to be added during the prediction.
 	 * 
 	 * @param patch a {@link RandomAccessibleInterval}
 	 */
-	public PredictionObject(final RandomAccessibleInterval<T> patch) {
-		this.patch = patch;
-		predictions = new ArrayList<LeafNode<T>>();
-	}
-
-	/**
-	 * @return the patch of this {@link PredictionObject}
-	 */
-	public RandomAccessibleInterval<T> getPatch() {
-		return patch;
+	public PredictionObject(final RandomAccessibleInterval<T> patch, final int[] patchMid,
+			final PatchObject<T>[][] grid, final int[] position, final Node[][][] nodeGrid) {
+		super(patch, grid, position, nodeGrid);
+		m_patchMid = patchMid;
+		m_predictions = new ArrayList<LeafNode>();
 	}
 
 	/**
 	 * adds the prediction to the {@link PredictionObject}
 	 */
-	public void addPrediction(final LeafNode<T> prediction) {
-		predictions.add(prediction);
+	public void addPrediction(final LeafNode prediction) {
+		m_predictions.add(prediction);
 	}
 
 	/**
 	 * @return all predictions of the {@link PredictionObject}
 	 */
-	public ArrayList<LeafNode<T>> getPredictions() {
-		return predictions;
+	public List<LeafNode> getPredictions() {
+		return m_predictions;
+	}
+
+	/**
+	 * @return the patchMid
+	 */
+	public int[] getPatchMid() {
+		return m_patchMid;
 	}
 }

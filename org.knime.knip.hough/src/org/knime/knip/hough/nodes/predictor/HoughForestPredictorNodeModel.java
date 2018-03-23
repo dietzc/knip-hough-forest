@@ -75,12 +75,6 @@ import org.knime.core.node.InvalidSettingsException;
 import org.knime.core.node.NodeModel;
 import org.knime.core.node.NodeSettingsRO;
 import org.knime.core.node.NodeSettingsWO;
-import org.knime.core.node.defaultnodesettings.SettingsModel;
-import org.knime.core.node.defaultnodesettings.SettingsModelBoolean;
-import org.knime.core.node.defaultnodesettings.SettingsModelDouble;
-import org.knime.core.node.defaultnodesettings.SettingsModelDoubleBounded;
-import org.knime.core.node.defaultnodesettings.SettingsModelIntegerBounded;
-import org.knime.core.node.defaultnodesettings.SettingsModelString;
 import org.knime.core.node.port.PortObject;
 import org.knime.core.node.port.PortObjectSpec;
 import org.knime.core.node.port.PortType;
@@ -107,10 +101,13 @@ import org.knime.knip.core.data.img.DefaultLabelingMetadata;
 import org.knime.knip.core.util.StringTransformer;
 import org.knime.knip.hough.features.FeatureDescriptor;
 import org.knime.knip.hough.forest.HoughForest;
-import org.knime.knip.hough.forest.PredictionObject;
-import org.knime.knip.hough.forest.Predictor;
+import org.knime.knip.hough.forest.node.Node;
+import org.knime.knip.hough.forest.prediction.PredictionObject;
+import org.knime.knip.hough.forest.prediction.Predictor;
+import org.knime.knip.hough.forest.prediction.PredictorEntangled;
 import org.knime.knip.hough.grid.Grid;
 import org.knime.knip.hough.grid.Grids;
+import org.knime.knip.hough.nodes.evaluator.HoughForestEvaluator;
 import org.knime.knip.hough.ports.HoughForestModelPortObject;
 
 import net.imagej.ImgPlus;
@@ -140,117 +137,32 @@ import net.imglib2.view.Views;
  * @author Simon Schmid, University of Konstanz
  */
 final class HoughForestPredictorNodeModel<T extends RealType<T>> extends NodeModel implements BufferedDataTableHolder {
+
+	private HoughForestPredictorConfig m_config;
+
 	// Input
 	private HoughForest m_houghForest;
-	private final SettingsModelString m_colImage = createColSelectModel();
-	// Patch Extraction
-	private final SettingsModelIntegerBounded m_patchGapX = createPatchGapXModel();
-	private final SettingsModelIntegerBounded m_patchGapY = createPatchGapYModel();
-	// Bounding Box Estimation
-	private final SettingsModelIntegerBounded m_spanIntervalBackprojection = createSpanIntervalBackprojectionModel();
-	// Multiple Detection
-	private final SettingsModelDouble m_thresholdMultipleDetection = createThresholdMultipleDetectionDoubleModel();
-	private final SettingsModelDoubleBounded m_sigma = createSigmaModel();
-	private final SettingsModelBoolean m_multipleDetection = createMultipleDetectionBoolModel(
-			m_thresholdMultipleDetection);
-	// Scales
-	private final SettingsModelBoolean m_scaleBool1 = createScalesBoolModel(1);
-	private final SettingsModelBoolean m_scaleBool2 = createScalesBoolModel(2);
-	private final SettingsModelBoolean m_scaleBool3 = createScalesBoolModel(3);
-	private final SettingsModelBoolean m_scaleBool4 = createScalesBoolModel(4);
-	private final SettingsModelDouble m_scaleValue1 = createScalesDoubleModel(1);
-	private final SettingsModelDouble m_scaleValue2 = createScalesDoubleModel(2);
-	private final SettingsModelDouble m_scaleValue3 = createScalesDoubleModel(3);
-	private final SettingsModelDouble m_scaleValue4 = createScalesDoubleModel(4);
-	private double[] m_scales;
-	// Output
-	private final SettingsModelBoolean m_outputVotes = createOutputVotesBoolModel();
-	private final SettingsModelBoolean m_outputMaxima = createOutputMaximaBoolModel();
-	private final SettingsModelBoolean m_outputAdvanced = createOutputAdvancedBoolModel();
 
-	private final SettingsModel[] m_listSettingsModels = { m_colImage, m_patchGapX, m_patchGapY,
-			m_spanIntervalBackprojection, m_sigma, m_thresholdMultipleDetection, m_multipleDetection, m_scaleBool1,
-			m_scaleBool2, m_scaleBool3, m_scaleBool4, m_scaleValue1, m_scaleValue2, m_scaleValue3, m_scaleValue4,
-			m_outputVotes, m_outputMaxima, m_outputAdvanced };
-
-	// data table for the table cell view
+	// Data table and column indices for the table cell view
 	private BufferedDataTable m_data;
 	private int m_imageColIdx;
 	private int m_labelColIdx;
 
 	// Services
-	private final OpService m_ops;
-	private final ExecutorService m_es;
-
-	static SettingsModelString createColSelectModel() {
-		return new SettingsModelString("image_column", "");
-	}
-
-	static SettingsModelIntegerBounded createPatchGapXModel() {
-		return new SettingsModelIntegerBounded("gap_horizontal", 8, 0, Integer.MAX_VALUE);
-	}
-
-	static SettingsModelIntegerBounded createPatchGapYModel() {
-		return new SettingsModelIntegerBounded("gap_vertical", 8, 0, Integer.MAX_VALUE);
-	}
-
-	static SettingsModelDoubleBounded createSigmaModel() {
-		return new SettingsModelDoubleBounded("sigma", 10.0, 0, Double.MAX_VALUE);
-	}
-
-	static SettingsModelIntegerBounded createSpanIntervalBackprojectionModel() {
-		return new SettingsModelIntegerBounded("span_area_backprojection", 15, 1, Integer.MAX_VALUE);
-	}
-
-	static SettingsModelBoolean createMultipleDetectionBoolModel(final SettingsModelDouble thresholdModel) {
-		final SettingsModelBoolean settingsModelBoolean = new SettingsModelBoolean("multiple_detection_bool", false);
-		settingsModelBoolean.addChangeListener(e -> thresholdModel.setEnabled(settingsModelBoolean.getBooleanValue()));
-		return settingsModelBoolean;
-	}
-
-	static SettingsModelDouble createThresholdMultipleDetectionDoubleModel() {
-		final SettingsModelDouble settingsModelDouble = new SettingsModelDouble("multiple_detection_threshold", 1.0);
-		settingsModelDouble.setEnabled(false);
-		return settingsModelDouble;
-	}
-
-	static SettingsModelBoolean createScalesBoolModel(final int idx) {
-		final SettingsModelBoolean settingsModelBoolean = new SettingsModelBoolean("scaleBool" + idx, false);
-		if (idx > 1)
-			settingsModelBoolean.setEnabled(false);
-		return settingsModelBoolean;
-	}
-
-	static SettingsModelDouble createScalesDoubleModel(final int idx) {
-		final SettingsModelDouble settingsModelDouble = new SettingsModelDouble("scaleValue" + idx, 1);
-		settingsModelDouble.setEnabled(false);
-		return settingsModelDouble;
-	}
-
-	static SettingsModelBoolean createOutputVotesBoolModel() {
-		return new SettingsModelBoolean("is_output_votes", false);
-	}
-
-	static SettingsModelBoolean createOutputMaximaBoolModel() {
-		return new SettingsModelBoolean("is_output_maxima", false);
-	}
-
-	static SettingsModelBoolean createOutputAdvancedBoolModel() {
-		return new SettingsModelBoolean("is_output_advanced", false);
-	}
+	private OpService m_ops;
+	private ExecutorService m_es;
 
 	public HoughForestPredictorNodeModel() {
 		super(new PortType[] { HoughForestModelPortObject.TYPE, BufferedDataTable.TYPE },
 				new PortType[] { BufferedDataTable.TYPE });
-		// OpService
-		m_ops = KNIPGateway.getInstance().ctx().getService(OpService.class);
-		// ExecutorService
-		m_es = KNIPGateway.threads().getExecutorService();
 	}
 
 	/** {@inheritDoc} */
 	@Override
 	protected DataTableSpec[] configure(final PortObjectSpec[] inSpecs) throws InvalidSettingsException {
+		if (m_config == null) {
+			m_config = new HoughForestPredictorConfig();
+		}
 		final DataTableSpec in = (DataTableSpec) inSpecs[1];
 		final ColumnRearranger r = createColumnRearranger(in, null);
 		final DataTableSpec out = r.createSpec();
@@ -261,21 +173,27 @@ final class HoughForestPredictorNodeModel<T extends RealType<T>> extends NodeMod
 		final UniqueNameGenerator uniqueNameGenerator = new UniqueNameGenerator(spec);
 		final ArrayList<DataColumnSpec> specs = new ArrayList<>();
 		specs.add(uniqueNameGenerator.newColumn("Prediction", LabelingCell.TYPE));
-		if (m_outputVotes.getBooleanValue()) {
+		if (m_config.getOutputVotes()) {
 			specs.add(uniqueNameGenerator.newColumn("Votes", ImgPlusCell.TYPE));
 		}
-		if (m_outputMaxima.getBooleanValue()) {
+		if (m_config.getOutputMaxima()) {
 			specs.add(uniqueNameGenerator.newColumn("Maxima", ImgPlusCell.TYPE));
+		}
+		if (m_config.getOutputFeatureImg()) {
+			specs.add(uniqueNameGenerator.newColumn("Features", ImgPlusCell.TYPE));
+		}
+		if (m_config.getOutputNodeIdx()) {
+			specs.add(uniqueNameGenerator.newColumn("NodeIdx", ImgPlusCell.TYPE));
 		}
 		return specs.toArray(new DataColumnSpec[specs.size()]);
 	}
 
 	private void fetchImgColIdx(final DataTableSpec inSpec) throws InvalidSettingsException {
-		if (m_colImage.getStringValue() != null && !m_colImage.getStringValue().isEmpty()) {
-			m_imageColIdx = inSpec.findColumnIndex(m_colImage.getStringValue());
+		if (m_config.getColImage() != null && !m_config.getColImage().isEmpty()) {
+			m_imageColIdx = inSpec.findColumnIndex(m_config.getColImage());
 			if (m_imageColIdx < 0)
 				throw new InvalidSettingsException(
-						"Image column '" + m_colImage.getStringValue() + "' not found in the input table!");
+						"Image column '" + m_config.getColImage() + "' not found in the input table!");
 		} else {
 			throw new InvalidSettingsException("An image column must be selected!");
 		}
@@ -289,9 +207,15 @@ final class HoughForestPredictorNodeModel<T extends RealType<T>> extends NodeMod
 		if (m_houghForest.getListOfTrees().isEmpty()) {
 			throw new InvalidSettingsException("The Hough forest does not contain any tree. Retrain the model!");
 		}
+		// OpService
+		m_ops = KNIPGateway.getInstance().ctx().getService(OpService.class);
+		// ExecutorService
+		m_es = KNIPGateway.threads().getExecutorService();
+
 		final ColumnRearranger r = createColumnRearranger(in.getDataTableSpec(), exec);
 		final BufferedDataTable out = exec.createColumnRearrangeTable(in, r, exec);
 		m_data = out;
+		m_es.shutdown();
 		return new BufferedDataTable[] { out };
 	}
 
@@ -391,38 +315,24 @@ final class HoughForestPredictorNodeModel<T extends RealType<T>> extends NodeMod
 
 	@Override
 	protected void saveSettingsTo(NodeSettingsWO settings) {
-		for (final SettingsModel s : m_listSettingsModels) {
-			s.saveSettingsTo(settings);
+		if (m_config != null) {
+			m_config.saveSettingsTo(settings);
 		}
 	}
 
 	@Override
 	protected void validateSettings(NodeSettingsRO settings) throws InvalidSettingsException {
-		for (final SettingsModel s : m_listSettingsModels) {
-			s.validateSettings(settings);
+		if (m_config != null) {
+			m_config.validateSettings(settings);
 		}
 	}
 
 	@Override
 	protected void loadValidatedSettingsFrom(NodeSettingsRO settings) throws InvalidSettingsException {
-		for (final SettingsModel s : m_listSettingsModels) {
-			s.loadSettingsFrom(settings);
+		if (m_config == null) {
+			m_config = new HoughForestPredictorConfig();
 		}
-
-		// Set scales array
-		if (m_scaleBool4.isEnabled() && m_scaleBool4.getBooleanValue()) {
-			m_scales = new double[] { m_scaleValue1.getDoubleValue(), m_scaleValue2.getDoubleValue(),
-					m_scaleValue3.getDoubleValue(), m_scaleValue4.getDoubleValue() };
-		} else if (m_scaleBool3.isEnabled() && m_scaleBool3.getBooleanValue()) {
-			m_scales = new double[] { m_scaleValue1.getDoubleValue(), m_scaleValue2.getDoubleValue(),
-					m_scaleValue3.getDoubleValue() };
-		} else if (m_scaleBool2.isEnabled() && m_scaleBool2.getBooleanValue()) {
-			m_scales = new double[] { m_scaleValue1.getDoubleValue(), m_scaleValue2.getDoubleValue() };
-		} else if (m_scaleBool1.isEnabled() && m_scaleBool1.getBooleanValue()) {
-			m_scales = new double[] { m_scaleValue1.getDoubleValue() };
-		} else {
-			m_scales = new double[] { 1.0 };
-		}
+		m_config.loadValidatedSettingsFrom(settings);
 	}
 
 	@Override
@@ -457,10 +367,11 @@ final class HoughForestPredictorNodeModel<T extends RealType<T>> extends NodeMod
 				throw new IllegalArgumentException(
 						"Image of row '" + row.getKey() + "' must be either 2D or 3D with three channels!");
 			}
+			final double[] scales = m_config.getScales();
 			// will collect votes of the different scales
-			final List<RandomAccessibleInterval<FloatType>> votesAllSc = new ArrayList<>(m_scales.length);
+			final List<RandomAccessibleInterval<FloatType>> votesAllSc = new ArrayList<>(scales.length);
 			// will collect all prediction objects the of different scales
-			final List<List<PredictionObject<FloatType>>> listPredObjAllSc = new ArrayList<>(m_scales.length);
+			final List<List<PredictionObject<FloatType>>> listPredObjAllSc = new ArrayList<>(scales.length);
 
 			// Get the feature descriptor stored in the model and apply it to the image
 			final FeatureDescriptor<T> featureDescriptor = (FeatureDescriptor<T>) m_houghForest.getFeatureDescriptor();
@@ -473,15 +384,16 @@ final class HoughForestPredictorNodeModel<T extends RealType<T>> extends NodeMod
 			}
 			final RandomAccessibleInterval<FloatType> featureImg = featureDescriptor.apply(img);
 
+			RandomAccessibleInterval<IntType> nodeIdxImage = null;
 			// === Do the voting for each scale ===
-			for (int scIdx = 0; scIdx < m_scales.length; scIdx++) {
+			for (int scIdx = 0; scIdx < scales.length; scIdx++) {
 				// Scale the feature image, if necessary
 				final RandomAccessibleInterval<FloatType> scaledFeatureImage;
-				if (Double.compare(m_scales[scIdx], 1.0) == 0) {
+				if (Double.compare(scales[scIdx], 1.0) == 0) {
 					scaledFeatureImage = featureImg;
 				} else {
 					scaledFeatureImage = (RandomAccessibleInterval<FloatType>) m_ops.run(DefaultScaleView.class,
-							featureImg, new double[] { m_scales[scIdx], m_scales[scIdx], 1.0 },
+							featureImg, new double[] { scales[scIdx], scales[scIdx], 1.0 },
 							new NLinearInterpolatorFactory<T>());
 				}
 
@@ -489,16 +401,28 @@ final class HoughForestPredictorNodeModel<T extends RealType<T>> extends NodeMod
 				 * === Patch Extraction ===
 				 */
 				// Build grid of patch descriptors
-				final long[] patchGap = new long[] { m_patchGapX.getIntValue(), m_patchGapY.getIntValue(), 0 };
+				final long[] patchGap = new long[] { m_config.getPatchGapX(), m_config.getPatchGapY(), 0 };
 				final Grid<FloatType> grid = Grids.createGrid(scaledFeatureImage, patchGap,
 						m_houghForest.getPatchSize());
 				final RandomAccess<RandomAccessibleInterval<FloatType>> raGrid = grid.randomAccess();
+				@SuppressWarnings("rawtypes")
+				final PredictionObject[][] predictionObjectGrid = new PredictionObject[(int) grid
+						.dimension(0)][(int) grid.dimension(1)];
+				final Node[][][] nodeGrid = new Node[m_houghForest.getListOfTrees()
+						.size()][(int) grid.dimension(0)][(int) grid.dimension(1)];
 				final List<PredictionObject<FloatType>> listPredObjSc = new ArrayList<>(
 						(int) (grid.dimension(0) * grid.dimension(1)));
 				for (int i = 0; i < grid.dimension(0); i++) {
 					for (int j = 0; j < grid.dimension(1); j++) {
-						raGrid.setPosition(new int[] { i, j, 0 });
-						listPredObjSc.add(new PredictionObject<FloatType>(raGrid.get()));
+						final int[] pos = new int[] { i, j, 0 };
+						raGrid.setPosition(pos);
+						final RandomAccessibleInterval<FloatType> patch = raGrid.get();
+						final int[] patchMid = new int[] { (int) (patch.min(0) + (patch.dimension(0) / 2)),
+								(int) (patch.min(1) + (patch.dimension(1) / 2)) };
+						final PredictionObject<FloatType> pObj = new PredictionObject<FloatType>(Views.zeroMin(patch),
+								patchMid, predictionObjectGrid, pos, nodeGrid);
+						listPredObjSc.add(pObj);
+						predictionObjectGrid[i][j] = pObj;
 					}
 				}
 				listPredObjAllSc.add(listPredObjSc);
@@ -530,34 +454,52 @@ final class HoughForestPredictorNodeModel<T extends RealType<T>> extends NodeMod
 					}
 
 				}
-				final List<PredictParallel> threads = new ArrayList<>();
-				final int sizeListPredObjSc = listPredObjSc.size();
-				final int batchSize = (int) (sizeListPredObjSc / Runtime.getRuntime().availableProcessors()) + 1;
-				int i = 0;
-				while (true) {
-					final int to = (i + 1) * batchSize;
-					final List<PredictionObject<FloatType>> subList;
-					if (to < sizeListPredObjSc) {
-						subList = listPredObjSc.subList(i * batchSize, to);
-						threads.add(new PredictParallel(subList, m_scales[scIdx]));
-						i++;
-					} else {
-						subList = listPredObjSc.subList(i * batchSize, sizeListPredObjSc);
-						threads.add(new PredictParallel(subList, m_scales[scIdx]));
-						break;
+				if (false) {
+					final List<PredictParallel> threads = new ArrayList<>();
+					final int sizeListPredObjSc = listPredObjSc.size();
+					final int batchSize = (int) (sizeListPredObjSc / Runtime.getRuntime().availableProcessors()) + 1;
+					int i = 0;
+					while (true) {
+						final int to = (i + 1) * batchSize;
+						final List<PredictionObject<FloatType>> subList;
+						if (to < sizeListPredObjSc) {
+							subList = listPredObjSc.subList(i * batchSize, to);
+							threads.add(new PredictParallel(subList, scales[scIdx]));
+							i++;
+						} else {
+							subList = listPredObjSc.subList(i * batchSize, sizeListPredObjSc);
+							threads.add(new PredictParallel(subList, scales[scIdx]));
+							break;
+						}
 					}
-				}
-				try {
-					m_es.invokeAll(threads);
-				} catch (final InterruptedException e) {
-					Thread.currentThread().interrupt();
-					throw new RuntimeException(e);
+					try {
+						m_es.invokeAll(threads);
+					} catch (final InterruptedException e) {
+						Thread.currentThread().interrupt();
+						throw new RuntimeException(e);
+					}
+					// entangled
+				} else {
+					PredictorEntangled.predictForest(m_houghForest, listPredObjSc, votesSc.randomAccess(),
+							new FinalInterval(scaledFeatureImage.dimension(0), scaledFeatureImage.dimension(1)),
+							scales[scIdx], m_config);
 				}
 				votesAllSc.add(votesSc);
+
+				// Node[][] nodes = listPredObjSc.get(0).getNodeGrid()[0];
+				// StringBuilder stringBuilder = new StringBuilder();
+				// for (int i = 0; i < nodes.length; i++) {
+				// for (int j = 0; j < nodes[0].length; j++) {
+				// stringBuilder.append(String.format("%3d ", nodes[i][j].getNodeIdx()));
+				// }
+				// stringBuilder.append("\n");
+				// }
+				// System.out.println(stringBuilder.toString());
+				nodeIdxImage = HoughForestEvaluator.createNodeIdxImage(listPredObjSc.get(0).getNodeGrid(), m_ops);
 			}
 
 			// Blur votes
-			final double sigma = m_sigma.getDoubleValue();
+			final double sigma = m_config.getSigma();
 			final RandomAccessibleInterval<FloatType> votes = m_ops.filter().convolve(Views.stack(votesAllSc),
 					(RandomAccessibleInterval<T>) m_ops.create().kernelGauss(sigma, sigma, 0)); // TODO: sigma for 3rd
 																								// dim?
@@ -568,10 +510,10 @@ final class HoughForestPredictorNodeModel<T extends RealType<T>> extends NodeMod
 			// Get points with max votes
 			final List<int[]> maxVotesPositions = new ArrayList<>();
 			final RandomAccessibleInterval<BitType> maxima;
-			if (m_multipleDetection.getBooleanValue()) {
+			if (m_config.getMultipleDetection()) {
 				final MaximumFinderOp<T> maximumFinderOp = new MaximumFinderOp<T>(0, 0);
 				final IterableInterval<BitType> thresholdedVotings = m_ops.threshold().apply(Views.iterable(votes),
-						new FloatType((float) m_thresholdMultipleDetection.getDoubleValue()));
+						new FloatType((float) m_config.getThresholdMultipleDetection()));
 				maxima = m_ops.create().img(votes, new BitType());
 				maximumFinderOp.compute((RandomAccessibleInterval<T>) thresholdedVotings, maxima);
 				final Cursor<BitType> cursorMaxima = Views.flatIterable(maxima).cursor();
@@ -608,25 +550,25 @@ final class HoughForestPredictorNodeModel<T extends RealType<T>> extends NodeMod
 			final RandomAccess<LabelingType<String>> raLabeling = labelings.randomAccess();
 
 			// Draw every found object
-			final int sizeBackprojection = m_spanIntervalBackprojection.getIntValue();
+			final int sizeBackprojection = m_config.getSpanIntervalBackprojection();
 			boolean predictionSuccessful = true;
 			for (final int[] maxVotesPos : maxVotesPositions) {
 				// will collect all vertices which voted inside the field around the
 				// point with max votes
 				final List<Localizable> vertices = new ArrayList<>();
 
-				for (int i = 0; i < m_scales.length; i++) {
+				for (int i = 0; i < scales.length; i++) {
 					// Compute scaled interval of max votes
 					final FinalInterval scaledIntervalOfMaxVotes = new FinalInterval(
-							new long[] { (long) ((maxVotesPos[0] - sizeBackprojection) * m_scales[i]),
-									(long) ((maxVotesPos[1] - sizeBackprojection) * m_scales[i]) },
-							new long[] { (long) ((maxVotesPos[0] + sizeBackprojection) * m_scales[i]),
-									(long) ((maxVotesPos[1] + sizeBackprojection) * m_scales[i]) });
+							new long[] { (long) ((maxVotesPos[0] - sizeBackprojection) * scales[i]),
+									(long) ((maxVotesPos[1] - sizeBackprojection) * scales[i]) },
+							new long[] { (long) ((maxVotesPos[0] + sizeBackprojection) * scales[i]),
+									(long) ((maxVotesPos[1] + sizeBackprojection) * scales[i]) });
 
 					// Get all the patches which vote inside the
 					// scaledIntervalOfMaxVotes
 					for (final PredictionObject<FloatType> predObj : listPredObjAllSc.get(i)) {
-						vertices.addAll(Predictor.getVertices(predObj, scaledIntervalOfMaxVotes, m_scales[i]));
+						vertices.addAll(PredictorEntangled.getVertices(predObj, scaledIntervalOfMaxVotes, scales[i]));
 					}
 				}
 
@@ -644,7 +586,7 @@ final class HoughForestPredictorNodeModel<T extends RealType<T>> extends NodeMod
 						}
 					}
 
-					if (m_outputAdvanced.getBooleanValue()) {
+					if (m_config.getOutputAdvanced()) {
 						/*
 						 * Draw max interval
 						 */
@@ -670,7 +612,7 @@ final class HoughForestPredictorNodeModel<T extends RealType<T>> extends NodeMod
 
 			if (!predictionSuccessful) {
 				setWarningMessage(
-						"For some images the prediction was not successfull! Probably the model needs to be trained with more data.");
+						"For some images the prediction was not successful! Probably the model needs to be trained with more data.");
 			}
 
 			/*
@@ -680,14 +622,26 @@ final class HoughForestPredictorNodeModel<T extends RealType<T>> extends NodeMod
 			try {
 				cells.add(m_labelingCellFac.createCell(labelings,
 						new DefaultLabelingMetadata(2, new DefaultLabelingColorTable())));
-				if (m_outputVotes.getBooleanValue()) {
+				if (m_config.getOutputVotes()) {
 					cells.add(m_imageCellFac
 							.createCell(new ImgPlus<>(ImgView.wrap(votes, new ArrayImgFactory<FloatType>()))));
 				}
-				if (m_outputMaxima.getBooleanValue()) {
+				if (m_config.getOutputMaxima()) {
 					cells.add(m_imageCellFac
 							.createCell(new ImgPlus<>(ImgView.wrap(maxima, new ArrayImgFactory<BitType>()))));
 				}
+				if (m_config.getOutputFeatureImg()) {
+					cells.add(m_imageCellFac
+							.createCell(new ImgPlus<>(ImgView.wrap(featureImg, new ArrayImgFactory<FloatType>()))));
+				}
+				if (m_config.getOutputNodeIdx()) {
+					cells.add(m_imageCellFac
+							.createCell(new ImgPlus<>(ImgView.wrap(nodeIdxImage, new ArrayImgFactory<IntType>()))));
+				}
+				// if (m_config.getOutputNodeIdx()) {
+				// cells.add(m_imageCellFac
+				// .createCell(new ImgPlus<>(ImgView.wrap(nodeIdxImage, new ArrayImgFactory<IntType>()))));
+				// }
 			} catch (IOException e) {
 				throw new IllegalStateException(e.getMessage());
 			}

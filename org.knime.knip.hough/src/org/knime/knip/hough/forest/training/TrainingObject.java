@@ -46,7 +46,9 @@
  * --------------------------------------------------------------------- *
  *
  */
-package org.knime.knip.hough.forest;
+package org.knime.knip.hough.forest.training;
+
+import org.knime.knip.hough.forest.node.Node;
 
 import net.imglib2.RandomAccessibleInterval;
 
@@ -55,10 +57,9 @@ import net.imglib2.RandomAccessibleInterval;
  * 
  * @author Simon Schmid, University of Konstanz
  */
-public final class TrainingObject<T> {
-	private final RandomAccessibleInterval<T> patch;
-	private final int clazz;
-	private final int[] offset;
+public final class TrainingObject<T> extends PatchObject<T> {
+	private final int m_clazz;
+	private final int[] m_offset;
 
 	/**
 	 * Creates a new object conatining all relevant parameters.
@@ -67,30 +68,26 @@ public final class TrainingObject<T> {
 	 * @param clazz 0 or 1 (other numbers are mapped to 1)
 	 * @param offset a two dimensional offset vector
 	 */
-	public TrainingObject(final RandomAccessibleInterval<T> patch, final int clazz, final int[] offset) {
-		this.patch = patch;
-		this.clazz = clazz == 0 ? 0 : 1;
-		this.offset = offset;
-	}
-
-	/**
-	 * @return the patch of this training object
-	 */
-	public RandomAccessibleInterval<T> getPatch() {
-		return patch;
+	@SuppressWarnings("rawtypes")
+	public TrainingObject(final RandomAccessibleInterval<T> patch, final int clazz, final int[] offset,
+			TrainingObject[][] grid, final int[] position, final Node[][][] nodeGrid) {
+		super(patch, grid, position, nodeGrid);
+		m_clazz = clazz == 0 ? 0 : 1;
+		m_offset = offset;
 	}
 
 	/**
 	 * @return the class of this training object
 	 */
 	public int getClazz() {
-		return clazz;
+		return m_clazz;
 	}
 
 	/**
 	 * @return the offset of this training object
 	 */
 	public int[] getOffset() {
-		return offset;
+		return m_offset;
 	}
+
 }

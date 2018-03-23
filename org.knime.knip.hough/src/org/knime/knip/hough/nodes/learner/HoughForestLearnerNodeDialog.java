@@ -57,7 +57,9 @@ import org.knime.core.node.defaultnodesettings.DialogComponentColumnNameSelectio
 import org.knime.core.node.defaultnodesettings.DialogComponentNumber;
 import org.knime.core.node.defaultnodesettings.DialogComponentNumberEdit;
 import org.knime.core.node.defaultnodesettings.SettingsModelBoolean;
+import org.knime.core.node.defaultnodesettings.SettingsModelDoubleBounded;
 import org.knime.core.node.defaultnodesettings.SettingsModelInteger;
+import org.knime.core.node.defaultnodesettings.SettingsModelIntegerBounded;
 import org.knime.core.node.defaultnodesettings.SettingsModelLong;
 import org.knime.knip.base.data.img.ImgPlusValue;
 import org.knime.knip.base.data.labeling.LabelingValue;
@@ -73,69 +75,122 @@ final class HoughForestLearnerNodeDialog extends DefaultNodeSettingsPane {
 	public HoughForestLearnerNodeDialog() {
 
 		createNewGroup("Input");
-		addDialogComponent(new DialogComponentColumnNameSelection(HoughForestLearnerNodeModel.createColSelectionModel(),
+		addDialogComponent(new DialogComponentColumnNameSelection(HoughForestLearnerConfig.createColSelectionModel(),
 				"Image column", 0, true, ImgPlusValue.class));
-		addDialogComponent(
-				new DialogComponentColumnNameSelection(HoughForestLearnerNodeModel.createLabelSelectionModel(),
-						"Labeling column", 0, true, LabelingValue.class));
+		addDialogComponent(new DialogComponentColumnNameSelection(HoughForestLearnerConfig.createLabelSelectionModel(),
+				"Labeling column", 0, true, LabelingValue.class));
 
 		createNewGroup("Tree Options");
-		addDialogComponent(new DialogComponentNumber(HoughForestLearnerNodeModel.createNumSamplesModel(),
+		addDialogComponent(new DialogComponentNumber(HoughForestLearnerConfig.createNumSamplesModel(),
 				"Size of sample per tree", 1));
-		addDialogComponent(new DialogComponentNumber(HoughForestLearnerNodeModel.createNumSplitFunctionsModel(),
+		addDialogComponent(new DialogComponentNumber(HoughForestLearnerConfig.createNumSplitFunctionsModel(),
 				"Number of split functions", 1));
-		addDialogComponent(new DialogComponentNumber(HoughForestLearnerNodeModel.createThresholdModel(),
-				"Max. threshold of split functions", 1));
 		addDialogComponent(
-				new DialogComponentNumber(HoughForestLearnerNodeModel.createDepthModel(), "Max. tree depth", 1));
-		addDialogComponent(new DialogComponentNumber(HoughForestLearnerNodeModel.createMinSizeSampleModel(),
+				new DialogComponentNumber(HoughForestLearnerConfig.createDepthModel(), "Max. tree depth", 1));
+		addDialogComponent(new DialogComponentNumber(HoughForestLearnerConfig.createMinSizeSampleModel(),
 				"Min. size of sample", 1));
 
 		createNewGroup("Forest Options");
 		addDialogComponent(
-				new DialogComponentNumber(HoughForestLearnerNodeModel.createNumTreesModel(), "Number of trees", 1));
+				new DialogComponentNumber(HoughForestLearnerConfig.createNumTreesModel(), "Number of trees", 1));
 		setHorizontalPlacement(true);
-		final SettingsModelBoolean useSeedBoolModel = HoughForestLearnerNodeModel.createUseSeedBoolModel();
+		final SettingsModelBoolean useSeedBoolModel = HoughForestLearnerConfig.createUseSeedBoolModel();
 		addDialogComponent(new DialogComponentBoolean(useSeedBoolModel, "Use static random seed"));
-		final SettingsModelLong seedModel = HoughForestLearnerNodeModel.createSeedLongModel();
+		final SettingsModelLong seedModel = HoughForestLearnerConfig.createSeedLongModel();
 		addDialogComponent(new DialogComponentNumberEdit(seedModel, null, 15));
 		final DialogComponentButton seedButton = new DialogComponentButton("New");
 		addDialogComponent(seedButton);
 
 		setHorizontalPlacement(false);
 		createNewGroup("Feature Selection");
-		addDialogComponent(new DialogComponentBoolean(HoughForestLearnerNodeModel.createConvertToLabModel(),
+		addDialogComponent(new DialogComponentBoolean(HoughForestLearnerConfig.createConvertToLabModel(),
 				"Convert from RGB to Lab color space, if possible"));
-		final SettingsModelBoolean fistDerivModel = HoughForestLearnerNodeModel.createFistDerivModel();
+		final SettingsModelBoolean fistDerivModel = HoughForestLearnerConfig.createFistDerivModel();
 		addDialogComponent(new DialogComponentBoolean(fistDerivModel, "Add first derivatives"));
-		final SettingsModelBoolean useAbsoluteFistDerivModel = HoughForestLearnerNodeModel
+		final SettingsModelBoolean useAbsoluteFistDerivModel = HoughForestLearnerConfig
 				.createUseAbsoluteFistDerivModel();
 		addDialogComponent(
 				new DialogComponentBoolean(useAbsoluteFistDerivModel, "Use absolute value for first derivatives"));
-		final SettingsModelBoolean secondDerivModel = HoughForestLearnerNodeModel.createSecondDerivModel();
+		final SettingsModelBoolean secondDerivModel = HoughForestLearnerConfig.createSecondDerivModel();
 		addDialogComponent(new DialogComponentBoolean(secondDerivModel, "Add second derivatives"));
-		final SettingsModelBoolean useAbsoluteSecondDerivModel = HoughForestLearnerNodeModel
+		final SettingsModelBoolean useAbsoluteSecondDerivModel = HoughForestLearnerConfig
 				.createUseAbsoluteSecondDerivModel();
 		addDialogComponent(
 				new DialogComponentBoolean(useAbsoluteSecondDerivModel, "Use absolute value for second derivatives"));
-		final SettingsModelBoolean hogBoolModel = HoughForestLearnerNodeModel.createHogBoolModel();
+		final SettingsModelBoolean hogBoolModel = HoughForestLearnerConfig.createHogBoolModel();
 		addDialogComponent(new DialogComponentBoolean(hogBoolModel, "Add histogram of oriented gradients"));
-		final SettingsModelInteger hogNumbBinsModel = HoughForestLearnerNodeModel.createHogNumbBinsModel();
+		final SettingsModelInteger hogNumbBinsModel = HoughForestLearnerConfig.createHogNumbBinsModel();
 		addDialogComponent(new DialogComponentNumber(hogNumbBinsModel, "Number of bins", 1));
-		addDialogComponent(new DialogComponentBoolean(HoughForestLearnerNodeModel.createApplyMinMaxModel(),
+		addDialogComponent(new DialogComponentBoolean(HoughForestLearnerConfig.createApplyMinMaxModel(),
 				"Apply a min and max filter (doubles the feature dimension)"));
-		addDialogComponent(new DialogComponentBoolean(HoughForestLearnerNodeModel.createUseAbsoluteModel(),
+		addDialogComponent(new DialogComponentBoolean(HoughForestLearnerConfig.createUseAbsoluteModel(),
 				"Use only absolute values"));
 
 		createNewGroup("Patch Extraction");
 		addDialogComponent(
-				new DialogComponentNumber(HoughForestLearnerNodeModel.createPatchWidthModel(), "Patch width", 1));
+				new DialogComponentNumber(HoughForestLearnerConfig.createPatchWidthModel(), "Patch width", 1));
 		addDialogComponent(
-				new DialogComponentNumber(HoughForestLearnerNodeModel.createPatchHeightModel(), "Patch height", 1));
-		addDialogComponent(new DialogComponentNumber(HoughForestLearnerNodeModel.createPatchGapXModel(),
+				new DialogComponentNumber(HoughForestLearnerConfig.createPatchHeightModel(), "Patch height", 1));
+		addDialogComponent(new DialogComponentNumber(HoughForestLearnerConfig.createPatchGapXModel(),
 				"Horizontal stride size", 1));
-		addDialogComponent(new DialogComponentNumber(HoughForestLearnerNodeModel.createPatchGapYModel(),
-				"Vertical stride size", 1));
+		addDialogComponent(
+				new DialogComponentNumber(HoughForestLearnerConfig.createPatchGapYModel(), "Vertical stride size", 1));
+
+		// Entanglement
+		createNewTab("Entanglement");
+
+		createNewGroup("General Settings");
+		final SettingsModelBoolean entanglementModel = HoughForestLearnerConfig.createEntanglementModel();
+		addDialogComponent(new DialogComponentBoolean(entanglementModel, "Enable entanglement"));
+
+		final SettingsModelDoubleBounded ratioEntanglementModel = HoughForestLearnerConfig
+				.createRatioEntanglementModel();
+		addDialogComponent(
+				new DialogComponentNumber(ratioEntanglementModel, "Ratio of entangled split functions", 0.1));
+
+		final SettingsModelIntegerBounded horizontalMinOffsetModel = HoughForestLearnerConfig
+				.createHorizontalMinOffsetModel();
+		addDialogComponent(new DialogComponentNumber(horizontalMinOffsetModel, "Horizontal min. offset", 5));
+
+		final SettingsModelIntegerBounded horizontalMaxOffsetModel = HoughForestLearnerConfig
+				.createHorizontalMaxOffsetModel();
+		addDialogComponent(new DialogComponentNumber(horizontalMaxOffsetModel, "Horizontal max. offset", 5));
+
+		final SettingsModelIntegerBounded createVerticalMinOffsetModel = HoughForestLearnerConfig
+				.createVerticalMinOffsetModel();
+		addDialogComponent(new DialogComponentNumber(createVerticalMinOffsetModel, "Vertical min. offset", 5));
+
+		final SettingsModelIntegerBounded verticalMaxOffsetModel = HoughForestLearnerConfig
+				.createVerticalMaxOffsetModel();
+		addDialogComponent(new DialogComponentNumber(verticalMaxOffsetModel, "Vertical max. offset", 5));
+
+		createNewGroup("Entangled Split Functions");
+		final SettingsModelBoolean useMapClassSplitFunctionModel = HoughForestLearnerConfig
+				.createUseMapClassSplitFunctionModel();
+		addDialogComponent(new DialogComponentBoolean(useMapClassSplitFunctionModel, "Use MAPClass split function"));
+
+		final SettingsModelBoolean useNodeDescendantSplitFunctionModel = HoughForestLearnerConfig
+				.createUseNodeDescendantSplitFunctionModel();
+		addDialogComponent(
+				new DialogComponentBoolean(useNodeDescendantSplitFunctionModel, "Use NodeDescendant split function"));
+
+		final SettingsModelBoolean useAncestorNodePairSplitFunctionModel = HoughForestLearnerConfig
+				.createUseAncestorNodePairSplitFunctionModel();
+		addDialogComponent(new DialogComponentBoolean(useAncestorNodePairSplitFunctionModel,
+				"Use AncestorNodePair split function"));
+
+		final SettingsModelIntegerBounded ancestorNodePairThresholdModel = HoughForestLearnerConfig
+				.createAncestorNodePairThresholdModel(useAncestorNodePairSplitFunctionModel);
+		addDialogComponent(new DialogComponentNumber(ancestorNodePairThresholdModel, "Max. threshold", 1));
+
+		final SettingsModelBoolean useOffsetNodePairSplitFunctionModel = HoughForestLearnerConfig
+				.createUseOffsetNodePairSplitFunctionModel();
+		addDialogComponent(
+				new DialogComponentBoolean(useOffsetNodePairSplitFunctionModel, "Use OffsetNodePair split function"));
+
+		final SettingsModelDoubleBounded offsetSimilarityNodePairSigmaModel = HoughForestLearnerConfig
+				.createOffsetSimilarityNodePairSigmaModel(useOffsetNodePairSplitFunctionModel);
+		addDialogComponent(new DialogComponentNumber(offsetSimilarityNodePairSigmaModel, "Sigma", 1.0));
 
 		/*
 		 * Change Listeners
@@ -159,5 +214,19 @@ final class HoughForestLearnerNodeDialog extends DefaultNodeSettingsPane {
 		});
 
 		hogBoolModel.addChangeListener(e -> hogNumbBinsModel.setEnabled(hogBoolModel.getBooleanValue()));
+
+		entanglementModel.addChangeListener(l -> {
+			final boolean isEntangled = entanglementModel.getBooleanValue();
+			ratioEntanglementModel.setEnabled(isEntangled);
+			horizontalMinOffsetModel.setEnabled(isEntangled);
+			horizontalMaxOffsetModel.setEnabled(isEntangled);
+			createVerticalMinOffsetModel.setEnabled(isEntangled);
+			verticalMaxOffsetModel.setEnabled(isEntangled);
+			useMapClassSplitFunctionModel.setEnabled(isEntangled);
+			useNodeDescendantSplitFunctionModel.setEnabled(isEntangled);
+			useAncestorNodePairSplitFunctionModel.setEnabled(isEntangled);
+			useOffsetNodePairSplitFunctionModel.setEnabled(isEntangled);
+		});
 	}
+
 }

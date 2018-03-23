@@ -1,8 +1,13 @@
 code:
+- revise scaling
+- oob strategy split functions
+
+- create node to create tree statistics
+- output magnitude and direction of votes
+
 - investigate weighting of votes of different scales
+- lazy patch extraction?
 
 entanglement:
-- breadth first
-- new features
 - prob. distr. for feature selection during training (-> 2nd training needed) -> depends on tree level
 - prob. distr. for feature parameters

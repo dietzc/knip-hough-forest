@@ -46,10 +46,16 @@
  * --------------------------------------------------------------------- *
  *
  */
-package org.knime.knip.hough.forest;
+package org.knime.knip.hough.forest.prediction;
 
 import java.util.ArrayList;
 import java.util.List;
+
+import org.knime.knip.hough.forest.HoughForest;
+import org.knime.knip.hough.forest.node.LeafNode;
+import org.knime.knip.hough.forest.node.Node;
+import org.knime.knip.hough.forest.node.SplitNode;
+import org.knime.knip.hough.forest.split.SplitFunction.Split;
 
 import net.imglib2.FinalInterval;
 import net.imglib2.Interval;
@@ -59,26 +65,26 @@ import net.imglib2.RandomAccess;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.type.numeric.RealType;
 import net.imglib2.type.numeric.real.FloatType;
-import net.imglib2.view.Views;
 
 /**
  * Several methods used for prediction, voting and back projection.
  * 
  * @author Simon Schmid, University of Konstanz
  */
+@Deprecated
 public final class Predictor {
 
-	@SuppressWarnings("unchecked")
-	private static <T extends RealType<T>> LeafNode<T> predictTree(final Node node,
-			final RandomAccessibleInterval<T> patch) {
+	private static <T extends RealType<T>> LeafNode predictTree(final Node node, final PredictionObject<T> patch) {
 		// return a leaf
 		if (node instanceof LeafNode)
-			return (LeafNode<T>) node;
+			return (LeafNode) node;
 		// otherwise predict split
-		final String predictedSplit = SplitUtils.predictSplit(Views.zeroMin(patch).randomAccess(),
-				((SplitNode) node).getSplitFunction());
+		if (!(node instanceof SplitNode)) {
+			throw new IllegalArgumentException("Unexpected node type: " + node.getClass());
+		}
+		final Split splitDecision = ((SplitNode) node).getSplitFunction().apply(patch, 0, null);
 		// and call recursively
-		if (predictedSplit.equals(SplitUtils.LEFT))
+		if (splitDecision == Split.LEFT)
 			return predictTree(((SplitNode) node).getLeftChild(), patch);
 		return predictTree(((SplitNode) node).getRightChild(), patch);
 	}
@@ -96,14 +102,18 @@ public final class Predictor {
 	public static <T extends RealType<T>> void predictForest(final HoughForest forest,
 			final PredictionObject<T> predObject, final RandomAccess<FloatType> raVotes,
 			final FinalInterval scaledInterval, final double scale) {
-		final RandomAccessibleInterval<T> patch = predObject.getPatch();
 		for (final SplitNode tree : forest.getListOfTrees()) {
-			final LeafNode<T> prediction = predictTree(tree, patch);
+			final Node node = predictTree(tree, predObject);
+			if (!(node instanceof LeafNode)) {
+				throw new IllegalStateException("Unexpected type of node predicted: " + node.getClass());
+			}
+			final LeafNode prediction = (LeafNode) node;
 			predObject.addPrediction(prediction);
-			for (int[] offset : prediction.getOffsetVectors()) {
+			for (final int[] offset : prediction.getOffsetVectors()) {
 				if (offset.length > 0) {
-					final int[] pos = new int[] { (int) (patch.min(0) + (patch.dimension(0) / 2) + offset[0]),
-							(int) (patch.min(1) + (patch.dimension(1) / 2) + offset[1]) };
+					final int patchX = predObject.getPatchMid()[0];
+					final int patchY = predObject.getPatchMid()[1];
+					final int[] pos = new int[] { patchX + offset[0], patchY + offset[1] };
 					if (contains2D(scaledInterval, pos)) {
 						raVotes.setPosition((int) (pos[0] / scale), 0);
 						raVotes.setPosition((int) (pos[1] / scale), 1);
@@ -140,11 +150,10 @@ public final class Predictor {
 	public static <T extends RealType<T>> List<Localizable> getVertices(final PredictionObject<T> predObject,
 			final FinalInterval scaledMaxInterval, final double scale) {
 		final List<Localizable> vertices = new ArrayList<>();
-		final RandomAccessibleInterval<T> patch = predObject.getPatch();
 		int counter = 0;
-		final int patchX = (int) (patch.min(0) + (patch.dimension(0) / 2));
-		final int patchY = (int) (patch.min(1) + (patch.dimension(1) / 2));
-		for (final LeafNode<T> prediction : predObject.getPredictions()) {
+		final int patchX = predObject.getPatchMid()[0];
+		final int patchY = predObject.getPatchMid()[1];
+		for (final LeafNode prediction : predObject.getPredictions()) {
 			if (prediction.getProbability(1) > 0.5) {
 				for (int[] offset : prediction.getOffsetVectors()) {
 					if (offset.length > 0) {

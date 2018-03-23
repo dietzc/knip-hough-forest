@@ -46,102 +46,134 @@
  * --------------------------------------------------------------------- *
  *
  */
-package org.knime.knip.hough.forest;
+package org.knime.knip.hough.forest.training;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+
+import org.knime.knip.hough.forest.HoughForestUtils;
 
 import net.imglib2.type.numeric.RealType;
 
 /**
- * This object holds a list of {@link TrainingObject}s and offers some
- * calculation methods.
+ * This object holds a list of {@link TrainingObject}s and offers some calculation methods.
  * 
  * @author Simon Schmid, University of Konstanz
  */
-public final class PatchSample<T extends RealType<T>> {
+public final class SampleTrainingObject<T extends RealType<T>> {
 
-	private final List<TrainingObject<T>> listOfElements;
-	private int[] numberElementsOfClazzes;
-	private double entropy;
+	private final List<TrainingObject<T>> m_listOfElements;
+	private final int[] m_numberElementsOfClazzes;
+	private final List<int[]> m_offsets;
+	private double m_entropy;
 
 	/**
-	 * @param listOfElements a list of {@link TrainingObject}s which shall be
-	 *            contained in the sample
+	 * @param listOfElements a list of {@link TrainingObject}s which shall be contained in the sample
 	 */
-	public PatchSample(final List<TrainingObject<T>> listOfElements) {
-		this.listOfElements = listOfElements;
-		numberElementsOfClazzes = null;
-		entropy = 0;
+	public SampleTrainingObject(final List<TrainingObject<T>> listOfElements) {
+		m_listOfElements = listOfElements;
+		m_numberElementsOfClazzes = computeNumberElemtentsOfClazzes();
+		m_offsets = collectOffsets();
+		m_entropy = 0;
 	}
 
 	/**
 	 * @return a list of all {@link TrainingObject} in this sample
 	 */
 	public List<TrainingObject<T>> getElementsOfSample() {
-		return listOfElements;
+		return m_listOfElements;
 	}
 
 	/**
 	 * @return size of this sample
 	 */
 	public int size() {
-		return listOfElements.size();
+		return m_listOfElements.size();
 	}
 
 	/**
 	 * @param trainingSet whole training set, used for computation
 	 * @return entropy of this sample
 	 */
-	public double getEntropy(final PatchSample<T> trainingSet) {
-		if (entropy == 0 && size() > 0) {
+	public synchronized double getEntropy(final SampleTrainingObject<T> trainingSet) {
+		if (m_entropy == 0 && size() > 0) {
 			final double[] probabilities = HoughForestUtils.computeClassProbabilities(getNumberElementsOfClazz0(),
 					getNumberElementsOfClazz1(), trainingSet);
-			entropy = -Math.log(probabilities[0]) * probabilities[0] - Math.log(probabilities[1]) * probabilities[1];
+			m_entropy = -Math.log(probabilities[0]) * probabilities[0] - Math.log(probabilities[1]) * probabilities[1];
 		}
-		return entropy;
+		return m_entropy;
 	}
 
 	/**
 	 * @return number of elements which are class 0
 	 */
 	public int getNumberElementsOfClazz0() {
-		if (numberElementsOfClazzes == null) {
-			computeNumberElemtentsOfClazzes();
-		}
-		return numberElementsOfClazzes[0];
+		return m_numberElementsOfClazzes[0];
 	}
 
 	/**
 	 * @return number of elements which are class 1
 	 */
 	public int getNumberElementsOfClazz1() {
-		if (numberElementsOfClazzes == null) {
-			computeNumberElemtentsOfClazzes();
-		}
-		return numberElementsOfClazzes[1];
+		return m_numberElementsOfClazzes[1];
 	}
 
-	private void computeNumberElemtentsOfClazzes() {
-		numberElementsOfClazzes = new int[2];
+	private int[] computeNumberElemtentsOfClazzes() {
 		int num = 0;
-		for (final TrainingObject<T> element : listOfElements) {
+		for (final TrainingObject<T> element : m_listOfElements) {
 			if (element.getClazz() == 0)
 				num++;
 		}
-		numberElementsOfClazzes[0] = num;
-		numberElementsOfClazzes[1] = size() - num;
+		return new int[] { num, size() - num };
 	}
 
 	/**
 	 * @return the offset vectors of all elements with class 1 in this sample
 	 */
-	public List<int[]> getOffsetVectors() {
-		List<int[]> vectors = new ArrayList<>();
-		for (TrainingObject<T> element : listOfElements) {
+	public List<int[]> getOffsets() {
+		return m_offsets;
+	}
+
+	private List<int[]> collectOffsets() {
+		final List<int[]> vectors = new ArrayList<>();
+		for (final TrainingObject<T> element : m_listOfElements) {
 			if (element.getClazz() == 1)
 				vectors.add(element.getOffset());
 		}
 		return vectors;
+	}
+
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		long temp;
+		temp = Double.doubleToLongBits(m_entropy);
+		result = prime * result + (int) (temp ^ (temp >>> 32));
+		result = prime * result + ((m_listOfElements == null) ? 0 : m_listOfElements.hashCode());
+		result = prime * result + Arrays.hashCode(m_numberElementsOfClazzes);
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		SampleTrainingObject<?> other = (SampleTrainingObject<?>) obj;
+		if (Double.doubleToLongBits(m_entropy) != Double.doubleToLongBits(other.m_entropy))
+			return false;
+		if (m_listOfElements == null) {
+			if (other.m_listOfElements != null)
+				return false;
+		} else if (!m_listOfElements.equals(other.m_listOfElements))
+			return false;
+		if (!Arrays.equals(m_numberElementsOfClazzes, other.m_numberElementsOfClazzes))
+			return false;
+		return true;
 	}
 }

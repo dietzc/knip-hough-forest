@@ -125,7 +125,7 @@ public final class HoughForestModelPortObject extends AbstractPortObject {
 	protected void save(PortObjectZipOutputStream out, ExecutionMonitor exec)
 			throws IOException, CanceledExecutionException {
 		try (final ObjectOutputStream oo = new ObjectOutputStream(out)) {
-			m_forest.writeExternal(oo);
+			oo.writeObject(m_forest);
 		}
 	}
 
@@ -133,8 +133,7 @@ public final class HoughForestModelPortObject extends AbstractPortObject {
 	protected void load(PortObjectZipInputStream in, PortObjectSpec spec, ExecutionMonitor exec)
 			throws IOException, CanceledExecutionException {
 		try (final ObjectInputStream io = new ObjectInputStream(in)) {
-			m_forest = new HoughForest();
-			m_forest.readExternal(io);
+			m_forest = (HoughForest) io.readObject();
 		} catch (ClassNotFoundException e) {
 			throw new RuntimeException(e);
 		}

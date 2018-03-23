@@ -48,10 +48,7 @@
  */
 package org.knime.knip.hough.features;
 
-import java.io.Externalizable;
-import java.io.IOException;
-import java.io.ObjectInput;
-import java.io.ObjectOutput;
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -75,66 +72,37 @@ import net.imglib2.view.Views;
  * 
  * @author Simon Schmid, University of Konstanz
  */
-public class FeatureDescriptor<T extends RealType<T>> implements Externalizable {
+public class FeatureDescriptor<T extends RealType<T>> implements Serializable {
 
-	private final OpService m_ops;
+	private static final long serialVersionUID = 1L;
 
-	private final List<Feature> m_feaures;
+	private transient OpService m_ops;
 
-	private boolean m_isColorImage;
+	private transient List<Feature> m_feaures;
 
-	private boolean m_convertToLab;
+	private final boolean m_isColorImage;
 
-	private boolean m_addFirstDerivative;
+	private final boolean m_convertToLab;
 
-	private boolean m_useAbsoluteFirstDerivative;
+	private final boolean m_addFirstDerivative;
 
-	private boolean m_addSecondDerivative;
+	private final boolean m_useAbsoluteFirstDerivative;
 
-	private boolean m_useAbsoluteSecondDerivative;
+	private final boolean m_addSecondDerivative;
 
-	private boolean m_addHoG;
+	private final boolean m_useAbsoluteSecondDerivative;
 
-	private int m_hogNumBins;
+	private final boolean m_addHoG;
 
-	private boolean m_applyMinMax;
+	private final int m_hogNumBins;
 
-	private boolean m_useAbsoluteValues;
+	private final boolean m_applyMinMax;
 
-	private final Converter<T, FloatType> m_converterToFloatType;
+	private final boolean m_useAbsoluteValues;
 
-	private final Converter<FloatType, FloatType> m_converterToAbsoluteValues;
+	private transient Converter<T, FloatType> m_converterToFloatType;
 
-	/**
-	 * Creates a feature descriptor which can be applied onto an image. All parameters take the default value, i.e. no
-	 * feature will be extracted.
-	 */
-	public FeatureDescriptor(final boolean numInputChannels) {
-		m_ops = new Context(new PluginIndex(
-				new DefaultPluginFinder(new ResourceAwareClassLoader(getClass().getClassLoader(), getClass()))))
-						.getService(OpService.class);
-
-		m_feaures = new ArrayList<>();
-
-		m_isColorImage = numInputChannels;
-
-		m_converterToFloatType = new Converter<T, FloatType>() {
-			@Override
-			public void convert(final T arg0, final FloatType arg1) {
-				arg1.setReal(arg0.getRealFloat());
-			}
-		};
-		m_converterToAbsoluteValues = new Converter<FloatType, FloatType>() {
-			@Override
-			public void convert(final FloatType arg0, final FloatType arg1) {
-				final float v = arg0.getRealFloat();
-				if (v >= 0)
-					arg1.setReal(arg0.getRealFloat());
-				else
-					arg1.setReal(-1 * arg0.getRealFloat());
-			}
-		};
-	}
+	private transient Converter<FloatType, FloatType> m_converterToAbsoluteValues;
 
 	/**
 	 * Creates a feature descriptor which can be applied onto an image. All parameters can be set to determine which
@@ -154,17 +122,43 @@ public class FeatureDescriptor<T extends RealType<T>> implements Externalizable 
 			final boolean useAbsoluteFirstDerivative, final boolean secondDerivative,
 			final boolean useAbsoluteSecondDerivative, final boolean hog, final int numberHog,
 			final boolean applyMinMax, final boolean useAbsoluteValues) {
-		this(numInputChannels);
-		this.setConvertToLab(convertToLab);
-		this.setAddFirstDerivative(firstDerivative);
-		this.setUseAbsoluteFirstDerivative(useAbsoluteFirstDerivative);
-		this.setAddSecondDerivative(secondDerivative);
-		this.setUseAbsoluteSecondDerivative(useAbsoluteSecondDerivative);
-		this.setAddHoG(hog);
-		this.setHogNumBins(numberHog);
-		this.setApplyMinMax(applyMinMax);
-		this.setUseAbsoluteValues(useAbsoluteValues);
+		m_isColorImage = numInputChannels;
+		m_convertToLab = convertToLab;
+		m_addFirstDerivative = firstDerivative;
+		m_useAbsoluteFirstDerivative = useAbsoluteFirstDerivative;
+		m_addSecondDerivative = secondDerivative;
+		m_useAbsoluteSecondDerivative = useAbsoluteSecondDerivative;
+		m_addHoG = hog;
+		m_hogNumBins = numberHog;
+		m_applyMinMax = applyMinMax;
+		m_useAbsoluteValues = useAbsoluteValues;
 
+		init();
+	}
+
+	private void init() {
+		m_ops = new Context(new PluginIndex(
+				new DefaultPluginFinder(new ResourceAwareClassLoader(getClass().getClassLoader(), getClass()))))
+						.getService(OpService.class);
+
+		m_feaures = new ArrayList<>();
+
+		m_converterToFloatType = new Converter<T, FloatType>() {
+			@Override
+			public void convert(final T arg0, final FloatType arg1) {
+				arg1.setReal(arg0.getRealFloat());
+			}
+		};
+		m_converterToAbsoluteValues = new Converter<FloatType, FloatType>() {
+			@Override
+			public void convert(final FloatType arg0, final FloatType arg1) {
+				final float v = arg0.getRealFloat();
+				if (v >= 0)
+					arg1.setReal(arg0.getRealFloat());
+				else
+					arg1.setReal(-1 * arg0.getRealFloat());
+			}
+		};
 		fillFeatures();
 	}
 
@@ -190,6 +184,9 @@ public class FeatureDescriptor<T extends RealType<T>> implements Externalizable 
 	 */
 	@SuppressWarnings("unchecked")
 	public RandomAccessibleInterval<FloatType> apply(RandomAccessibleInterval<T> in) {
+		if (m_ops == null) {
+			init();
+		}
 		if (!(in.numDimensions() == 2 && !m_isColorImage)
 				&& !(in.numDimensions() == 3 && in.dimension(2) == 3 && m_isColorImage)) {
 			throw new IllegalArgumentException("Input image has wrong dimensionality!");
@@ -267,32 +264,6 @@ public class FeatureDescriptor<T extends RealType<T>> implements Externalizable 
 		}
 	}
 
-	@Override
-	public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
-		m_isColorImage = in.readBoolean();
-		setConvertToLab(in.readBoolean());
-		setAddFirstDerivative(in.readBoolean());
-		setAddSecondDerivative(in.readBoolean());
-		setAddHoG(in.readBoolean());
-		setHogNumBins(in.readInt());
-		setApplyMinMax(in.readBoolean());
-		setUseAbsoluteValues(in.readBoolean());
-
-		fillFeatures();
-	}
-
-	@Override
-	public void writeExternal(ObjectOutput out) throws IOException {
-		out.writeBoolean(m_isColorImage);
-		out.writeBoolean(isConvertToLab());
-		out.writeBoolean(isAddFirstDerivative());
-		out.writeBoolean(isAddSecondDerivative());
-		out.writeBoolean(isAddHoG());
-		out.writeInt(getHogNumBins());
-		out.writeBoolean(isApplyMinMax());
-		out.writeBoolean(isUseAbsoluteValues());
-	}
-
 	/**
 	 * @return the convertToLab
 	 */
@@ -356,69 +327,6 @@ public class FeatureDescriptor<T extends RealType<T>> implements Externalizable 
 		return m_useAbsoluteValues;
 	}
 
-	/**
-	 * @param convertToLab the convertToLab to set
-	 */
-	public void setConvertToLab(boolean convertToLab) {
-		this.m_convertToLab = convertToLab;
-	}
-
-	/**
-	 * @param addFirstDerivative the addFirstDerivative to set
-	 */
-	public void setAddFirstDerivative(boolean addFirstDerivative) {
-		this.m_addFirstDerivative = addFirstDerivative;
-	}
-
-	/**
-	 * @param useAbsoluteFirstDerivative the useAbsoluteFirstDerivative to set
-	 */
-	public void setUseAbsoluteFirstDerivative(boolean useAbsoluteFirstDerivative) {
-		this.m_useAbsoluteFirstDerivative = useAbsoluteFirstDerivative;
-	}
-
-	/**
-	 * @param addSecondDerivative the addSecondDerivative to set
-	 */
-	public void setAddSecondDerivative(boolean addSecondDerivative) {
-		this.m_addSecondDerivative = addSecondDerivative;
-	}
-
-	/**
-	 * @param useAbsoluteSecondDerivative the useAbsoluteSecondDerivative to set
-	 */
-	public void setUseAbsoluteSecondDerivative(boolean useAbsoluteSecondDerivative) {
-		this.m_useAbsoluteSecondDerivative = useAbsoluteSecondDerivative;
-	}
-
-	/**
-	 * @param addHoG the addHoG to set
-	 */
-	public void setAddHoG(boolean addHoG) {
-		this.m_addHoG = addHoG;
-	}
-
-	/**
-	 * @param hogNumBins the hogNumBins to set
-	 */
-	public void setHogNumBins(int hogNumBins) {
-		this.m_hogNumBins = hogNumBins;
-	}
-
-	/**
-	 * @param applyMinMax the applyMinMax to set
-	 */
-	public void setApplyMinMax(boolean applyMinMax) {
-		this.m_applyMinMax = applyMinMax;
-	}
-
-	/**
-	 * @param useAbsoluteValues the useAbsoluteValues to set
-	 */
-	public void setUseAbsoluteValues(boolean useAbsoluteValues) {
-		this.m_useAbsoluteValues = useAbsoluteValues;
-	}
-
 	public boolean isColorImage() {
 		return m_isColorImage;
 	}
@@ -427,6 +335,7 @@ public class FeatureDescriptor<T extends RealType<T>> implements Externalizable 
 	public int hashCode() {
 		final int prime = 31;
 		int result = 1;
+		result = prime * result + (m_isColorImage ? 1231 : 1237);
 		result = prime * result + (m_addFirstDerivative ? 1231 : 1237);
 		result = prime * result + (m_addHoG ? 1231 : 1237);
 		result = prime * result + (m_addSecondDerivative ? 1231 : 1237);
@@ -448,6 +357,9 @@ public class FeatureDescriptor<T extends RealType<T>> implements Externalizable 
 			return false;
 		}
 		FeatureDescriptor<?> other = (FeatureDescriptor<?>) obj;
+		if (m_isColorImage != other.m_isColorImage) {
+			return false;
+		}
 		if (m_addFirstDerivative != other.m_addFirstDerivative) {
 			return false;
 		}

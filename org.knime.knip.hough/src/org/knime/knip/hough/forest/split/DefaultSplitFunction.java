@@ -46,89 +46,71 @@
  * --------------------------------------------------------------------- *
  *
  */
-package org.knime.knip.hough.forest;
+package org.knime.knip.hough.forest.split;
 
-import java.io.IOException;
-import java.io.ObjectInput;
-import java.io.ObjectOutput;
+import java.util.Arrays;
+import java.util.Random;
+
+import org.knime.knip.hough.forest.training.PatchObject;
+import org.knime.knip.hough.forest.training.TrainingObject;
+import org.knime.knip.hough.nodes.learner.HoughForestLearnerConfig;
+
+import net.imglib2.RandomAccess;
+import net.imglib2.type.numeric.RealType;
 
 /**
- * Represents a split node of a Hough tree.
+ * Holds parameters of a split function of a Hough tree.
  * 
  * @author Simon Schmid, University of Konstanz
  */
-public final class SplitNode implements Node {
+public final class DefaultSplitFunction implements SplitFunction {
 
-	private static final long serialVersionUID = -5493651343996719345L;
+	private static final long serialVersionUID = 1L;
 
-	private SplitFunction splitFunction;
-	private Node leftChild;
-	private Node rightChild;
+	private final int[][] m_indices;
+	private final double m_threshold;
 
 	/**
-	 * Creates an object of this class with all relevant parameters.
+	 * Creates a new {@link DefaultSplitFunction}.
 	 * 
-	 * @param splitFunction its {@link SplitFunction}
-	 * @param leftChild its left child {@link Node}
-	 * @param rightChild its right child {@link Node}
+	 * @param indices the indices
+	 * @param threshold the threshold
 	 */
-	public SplitNode(final SplitFunction splitFunction, final Node leftChild, final Node rightChild) {
-		this.splitFunction = splitFunction;
-		this.leftChild = leftChild;
-		this.rightChild = rightChild;
+	public DefaultSplitFunction(final int[][] indices, final double threshold) {
+		m_indices = indices;
+		m_threshold = threshold;
 	}
 
-	/**
-	 * Creates an empty object of this class which needs to be filled by invoking {@link #readExternal(ObjectInput)}.
-	 */
-	public SplitNode() {
-	}
-
-	/**
-	 * @return the left child {@link Node}
-	 */
-	public Node getLeftChild() {
-		return leftChild;
-	}
-
-	/**
-	 * @return the right child {@link Node}
-	 */
-	public Node getRightChild() {
-		return rightChild;
-	}
-
-	/**
-	 * @return the {@link SplitFunction}
-	 */
-	public SplitFunction getSplitFunction() {
-		return splitFunction;
+	public static <T extends RealType<T>> DefaultSplitFunction createRandom(final TrainingObject<?> sample,
+			final HoughForestLearnerConfig config, Random random) {
+		final int channel = random.nextInt((int) sample.getPatch().dimension(2));
+		return new DefaultSplitFunction(
+				new int[][] {
+						{ random.nextInt(config.getPatchWidth()), random.nextInt(config.getPatchHeight()), channel },
+						{ random.nextInt(config.getPatchWidth()), random.nextInt(config.getPatchHeight()), channel } },
+				random.nextDouble() * config.getThresholds()[channel]);
 	}
 
 	@Override
-	public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
-		leftChild = (Node) in.readObject();
-		rightChild = (Node) in.readObject();
-		int[][] indices = (int[][]) in.readObject();
-		double threshold = in.readDouble();
-		splitFunction = new SplitFunction(indices, threshold);
-	}
-
-	@Override
-	public void writeExternal(ObjectOutput out) throws IOException {
-		out.writeObject(leftChild);
-		out.writeObject(rightChild);
-		out.writeObject(splitFunction.getIndices());
-		out.writeDouble(splitFunction.getThreshold());
+	public <T extends RealType<T>> Split apply(final PatchObject<T> pObj, final int treeIdx, final int[] stride) {
+		final RandomAccess<T> raPatch = pObj.getPatch().randomAccess();
+		raPatch.setPosition(m_indices[0]);
+		final float value1 = raPatch.get().getRealFloat();
+		raPatch.setPosition(m_indices[1]);
+		final float value2 = raPatch.get().getRealFloat();
+		if (value1 - value2 < m_threshold)
+			return Split.LEFT;
+		return Split.RIGHT;
 	}
 
 	@Override
 	public int hashCode() {
 		final int prime = 31;
 		int result = 1;
-		result = prime * result + ((leftChild == null) ? 0 : leftChild.hashCode());
-		result = prime * result + ((rightChild == null) ? 0 : rightChild.hashCode());
-		result = prime * result + ((splitFunction == null) ? 0 : splitFunction.hashCode());
+		result = prime * result + Arrays.deepHashCode(m_indices);
+		long temp;
+		temp = Double.doubleToLongBits(m_threshold);
+		result = prime * result + (int) (temp ^ (temp >>> 32));
 		return result;
 	}
 
@@ -137,32 +119,22 @@ public final class SplitNode implements Node {
 		if (this == obj) {
 			return true;
 		}
-		if (!(obj instanceof SplitNode)) {
+		if (!(obj instanceof DefaultSplitFunction)) {
 			return false;
 		}
-		SplitNode other = (SplitNode) obj;
-		if (leftChild == null) {
-			if (other.leftChild != null) {
-				return false;
-			}
-		} else if (!leftChild.equals(other.leftChild)) {
+		DefaultSplitFunction other = (DefaultSplitFunction) obj;
+		if (!Arrays.deepEquals(m_indices, other.m_indices)) {
 			return false;
 		}
-		if (rightChild == null) {
-			if (other.rightChild != null) {
-				return false;
-			}
-		} else if (!rightChild.equals(other.rightChild)) {
-			return false;
-		}
-		if (splitFunction == null) {
-			if (other.splitFunction != null) {
-				return false;
-			}
-		} else if (!splitFunction.equals(other.splitFunction)) {
+		if (Double.doubleToLongBits(m_threshold) != Double.doubleToLongBits(other.m_threshold)) {
 			return false;
 		}
 		return true;
+	}
+
+	@Override
+	public String getName() {
+		return "Default";
 	}
 
 }

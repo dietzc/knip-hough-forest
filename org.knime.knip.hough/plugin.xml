@@ -25,6 +25,11 @@
             deprecated="false"
             factory-class="org.knime.knip.hough.nodes.learner.HoughForestLearnerNodeFactory">
       </node>
+      <node
+            category-path="/community/knip/hough"
+            deprecated="false"
+            factory-class="org.knime.knip.hough.nodes.evaluator.HoughForestEvaluatorNodeFactory">
+      </node>
    </extension>
    <extension
          point="org.knime.workbench.repository.categories">

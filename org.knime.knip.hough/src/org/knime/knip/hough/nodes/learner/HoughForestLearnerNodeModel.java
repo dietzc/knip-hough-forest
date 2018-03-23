@@ -67,13 +67,6 @@ import org.knime.core.node.InvalidSettingsException;
 import org.knime.core.node.NodeModel;
 import org.knime.core.node.NodeSettingsRO;
 import org.knime.core.node.NodeSettingsWO;
-import org.knime.core.node.defaultnodesettings.SettingsModel;
-import org.knime.core.node.defaultnodesettings.SettingsModelBoolean;
-import org.knime.core.node.defaultnodesettings.SettingsModelDoubleBounded;
-import org.knime.core.node.defaultnodesettings.SettingsModelInteger;
-import org.knime.core.node.defaultnodesettings.SettingsModelIntegerBounded;
-import org.knime.core.node.defaultnodesettings.SettingsModelLong;
-import org.knime.core.node.defaultnodesettings.SettingsModelString;
 import org.knime.core.node.port.PortObject;
 import org.knime.core.node.port.PortObjectSpec;
 import org.knime.core.node.port.PortType;
@@ -82,16 +75,19 @@ import org.knime.knip.base.data.labeling.LabelingValue;
 import org.knime.knip.core.KNIPGateway;
 import org.knime.knip.hough.features.FeatureDescriptor;
 import org.knime.knip.hough.forest.HoughForest;
-import org.knime.knip.hough.forest.Learner;
-import org.knime.knip.hough.forest.PatchSample;
-import org.knime.knip.hough.forest.SplitNode;
-import org.knime.knip.hough.forest.TrainingObject;
+import org.knime.knip.hough.forest.node.Node;
+import org.knime.knip.hough.forest.node.SplitNode;
+import org.knime.knip.hough.forest.training.LearnerEntangled;
+import org.knime.knip.hough.forest.training.SampleTrainingObject;
+import org.knime.knip.hough.forest.training.TrainingObject;
 import org.knime.knip.hough.grid.Grid;
 import org.knime.knip.hough.grid.Grids;
+import org.knime.knip.hough.nodes.evaluator.HoughForestEvaluator;
 import org.knime.knip.hough.ports.HoughForestModelPortObject;
 import org.knime.knip.hough.ports.HoughForestModelPortObjectSpec;
 
 import net.imagej.ImgPlus;
+import net.imglib2.Cursor;
 import net.imglib2.Point;
 import net.imglib2.RandomAccess;
 import net.imglib2.RandomAccessibleInterval;
@@ -101,6 +97,7 @@ import net.imglib2.roi.labeling.LabelingType;
 import net.imglib2.type.numeric.RealType;
 import net.imglib2.type.numeric.real.FloatType;
 import net.imglib2.util.Intervals;
+import net.imglib2.view.IntervalView;
 import net.imglib2.view.Views;
 
 /**
@@ -109,132 +106,9 @@ import net.imglib2.view.Views;
  * @author Simon Schmid, University of Konstanz
  */
 final class HoughForestLearnerNodeModel<T extends RealType<T>, L> extends NodeModel {
+	private HoughForestLearnerConfig m_config;
 
-	// Input
-	private final SettingsModelString m_colImage = createColSelectionModel();
-	private final SettingsModelString m_colLabel = createLabelSelectionModel();
-	// Tree Options
-	private final SettingsModelIntegerBounded m_numSamples = createNumSamplesModel();
-	private final SettingsModelIntegerBounded m_numSplitFunctions = createNumSplitFunctionsModel();
-	private final SettingsModelDoubleBounded m_threshold = createThresholdModel();
-	private final SettingsModelIntegerBounded m_depth = createDepthModel();
-	private final SettingsModelIntegerBounded m_minSizeSample = createMinSizeSampleModel();
-	// Forest Options
-	private final SettingsModelIntegerBounded m_numTrees = createNumTreesModel();
-	private final SettingsModelBoolean m_useSeed = createUseSeedBoolModel();
-	private final SettingsModelLong m_seed = createSeedLongModel();
-	// Feature Selection
-	private final SettingsModelBoolean m_convertToLab = createConvertToLabModel();
-	private final SettingsModelBoolean m_firstDerivative = createFistDerivModel();
-	private final SettingsModelBoolean m_useAbsoluteFirstDerivative = createUseAbsoluteFistDerivModel();
-	private final SettingsModelBoolean m_secondDerivative = createSecondDerivModel();
-	private final SettingsModelBoolean m_useAbsoluteSecondDerivative = createUseAbsoluteSecondDerivModel();
-	private final SettingsModelBoolean m_hog = createHogBoolModel();
-	private final SettingsModelInteger m_hogNumBins = createHogNumbBinsModel();
-	private final SettingsModelBoolean m_applyMinMax = createApplyMinMaxModel();
-	private final SettingsModelBoolean m_useAbsolute = createUseAbsoluteModel();
-	// Patch Extraction
-	private final SettingsModelIntegerBounded m_patchGapX = createPatchGapXModel();
-	private final SettingsModelIntegerBounded m_patchGapY = createPatchGapYModel();
-	private final SettingsModelIntegerBounded m_patchWidth = createPatchWidthModel();
-	private final SettingsModelIntegerBounded m_patchHeight = createPatchHeightModel();
-
-	private final SettingsModel[] m_listSettingsModels = { m_colImage, m_colLabel, m_numSamples, m_numSplitFunctions,
-			m_threshold, m_depth, m_minSizeSample, m_numTrees, m_useSeed, m_seed, m_convertToLab, m_firstDerivative,
-			m_useAbsoluteFirstDerivative, m_secondDerivative, m_useAbsoluteSecondDerivative, m_hog, m_hogNumBins,
-			m_applyMinMax, m_useAbsolute, m_patchWidth, m_patchHeight, m_patchGapX, m_patchGapY };
-
-	static SettingsModelString createColSelectionModel() {
-		return new SettingsModelString("image_column", "");
-	}
-
-	static SettingsModelString createLabelSelectionModel() {
-		return new SettingsModelString("label_column", "");
-	}
-
-	static SettingsModelIntegerBounded createNumTreesModel() {
-		return new SettingsModelIntegerBounded("num_trees", 8, 1, Integer.MAX_VALUE);
-	}
-
-	static SettingsModelBoolean createUseSeedBoolModel() {
-		return new SettingsModelBoolean("use_seed", true);
-	}
-
-	static SettingsModelLong createSeedLongModel() {
-		return new SettingsModelLong("seed", System.currentTimeMillis());
-	}
-
-	static SettingsModelIntegerBounded createNumSamplesModel() {
-		return new SettingsModelIntegerBounded("num_samples", 10000, 1, Integer.MAX_VALUE);
-	}
-
-	static SettingsModelIntegerBounded createNumSplitFunctionsModel() {
-		return new SettingsModelIntegerBounded("num_split_functions", 10000, 1, Integer.MAX_VALUE);
-	}
-
-	static SettingsModelDoubleBounded createThresholdModel() {
-		return new SettingsModelDoubleBounded("threshold", 5.0, 0, Integer.MAX_VALUE);
-	}
-
-	static SettingsModelIntegerBounded createDepthModel() {
-		return new SettingsModelIntegerBounded("tree_depth", 15, 1, Integer.MAX_VALUE);
-	}
-
-	static SettingsModelIntegerBounded createMinSizeSampleModel() {
-		return new SettingsModelIntegerBounded("min_size_sample", 20, 1, Integer.MAX_VALUE);
-	}
-
-	static SettingsModelBoolean createConvertToLabModel() {
-		return new SettingsModelBoolean("convert_to_lab", true);
-	}
-
-	static SettingsModelBoolean createFistDerivModel() {
-		return new SettingsModelBoolean("add_first_deriv", true);
-	}
-
-	static SettingsModelBoolean createUseAbsoluteFistDerivModel() {
-		return new SettingsModelBoolean("use_absolute_first_deriv", true);
-	}
-
-	static SettingsModelBoolean createSecondDerivModel() {
-		return new SettingsModelBoolean("add_second_deriv", true);
-	}
-
-	static SettingsModelBoolean createUseAbsoluteSecondDerivModel() {
-		return new SettingsModelBoolean("use_absolute_second_deriv", true);
-	}
-
-	static SettingsModelBoolean createHogBoolModel() {
-		return new SettingsModelBoolean("add_hogl", true);
-	}
-
-	static SettingsModelInteger createHogNumbBinsModel() {
-		return new SettingsModelInteger("hog_num_bins", 9);
-	}
-
-	static SettingsModelBoolean createApplyMinMaxModel() {
-		return new SettingsModelBoolean("apply_min_max", true);
-	}
-
-	static SettingsModelBoolean createUseAbsoluteModel() {
-		return new SettingsModelBoolean("use_absolute", false);
-	}
-
-	static SettingsModelIntegerBounded createPatchGapXModel() {
-		return new SettingsModelIntegerBounded("gap_horizontal", 8, 0, Integer.MAX_VALUE);
-	}
-
-	static SettingsModelIntegerBounded createPatchGapYModel() {
-		return new SettingsModelIntegerBounded("gap_vertical", 8, 0, Integer.MAX_VALUE);
-	}
-
-	static SettingsModelIntegerBounded createPatchWidthModel() {
-		return new SettingsModelIntegerBounded("patch_width", 16, 1, Integer.MAX_VALUE);
-	}
-
-	static SettingsModelIntegerBounded createPatchHeightModel() {
-		return new SettingsModelIntegerBounded("patch_height", 16, 1, Integer.MAX_VALUE);
-	}
+	private double[] m_thresholds;
 
 	/**
 	 * Table in, model out.
@@ -244,11 +118,11 @@ final class HoughForestLearnerNodeModel<T extends RealType<T>, L> extends NodeMo
 	}
 
 	private int fetchImgColIdx(final DataTableSpec spec) throws InvalidSettingsException {
-		if (m_colImage.getStringValue() != null && !m_colImage.getStringValue().isEmpty()) {
-			final int imgIdx = spec.findColumnIndex(m_colImage.getStringValue());
+		if (m_config.getColImage() != null && !m_config.getColImage().isEmpty()) {
+			final int imgIdx = spec.findColumnIndex(m_config.getColImage());
 			if (imgIdx < 0) {
 				throw new InvalidSettingsException(
-						"Image column '" + m_colImage.getStringValue() + "' not found in the input table!");
+						"Image column '" + m_config.getColImage() + "' not found in the input table!");
 			}
 			return imgIdx;
 		} else {
@@ -257,11 +131,11 @@ final class HoughForestLearnerNodeModel<T extends RealType<T>, L> extends NodeMo
 	}
 
 	private int fetchLabelingColIdx(final DataTableSpec spec) throws InvalidSettingsException {
-		if (m_colLabel.getStringValue() != null && !m_colLabel.getStringValue().isEmpty()) {
-			final int labelIdx = spec.findColumnIndex(m_colLabel.getStringValue());
+		if (m_config.getColLabel() != null && !m_config.getColLabel().isEmpty()) {
+			final int labelIdx = spec.findColumnIndex(m_config.getColLabel());
 			if (labelIdx < 0) {
 				throw new InvalidSettingsException(
-						"Labeling column '" + m_colLabel.getStringValue() + "' not found in the input table!");
+						"Labeling column '" + m_config.getColLabel() + "' not found in the input table!");
 			}
 			return labelIdx;
 		} else {
@@ -281,6 +155,7 @@ final class HoughForestLearnerNodeModel<T extends RealType<T>, L> extends NodeMo
 
 		// Set progress to zero, so that in the parallel threads the progress can still be added
 		exec.setProgress(0);
+		exec.setProgress("Extracting patches...");
 
 		// Parallelization stuff
 		final ExecutorService es = KNIPGateway.threads().getExecutorService();
@@ -290,9 +165,9 @@ final class HoughForestLearnerNodeModel<T extends RealType<T>, L> extends NodeMo
 		 * Patch Extraction
 		 */
 		getLogger().infoWithFormat("Extract patches of %d images...", table.size());
-		final long[] patchGap = new long[] { m_patchGapX.getIntValue(), m_patchGapY.getIntValue(), 0 };
-		final long[] patchsize = new long[] { m_patchWidth.getIntValue(), m_patchHeight.getIntValue(), -1 };
-		final List<TrainingObject<FloatType>> patches = new ArrayList<>();
+		final long[] patchGap = new long[] { m_config.getPatchGapX(), m_config.getPatchGapY(), 0 };
+		final long[] patchsize = new long[] { m_config.getPatchWidth(), m_config.getPatchHeight(), -1 };
+		final List<TrainingObject<FloatType>> trainingObjects = new ArrayList<>();
 
 		// check dimensionality of the image in the first row
 		final CloseableRowIterator rowIterator = table.iterator();
@@ -310,21 +185,21 @@ final class HoughForestLearnerNodeModel<T extends RealType<T>, L> extends NodeMo
 		}
 		rowIterator.close();
 
-		final FeatureDescriptor<T> featureDescriptor = new FeatureDescriptor<T>(isColorImage,
-				m_convertToLab.getBooleanValue(), m_firstDerivative.getBooleanValue(),
-				m_useAbsoluteFirstDerivative.getBooleanValue(), m_secondDerivative.getBooleanValue(),
-				m_useAbsoluteSecondDerivative.getBooleanValue(), m_hog.getBooleanValue(), m_hogNumBins.getIntValue(),
-				m_applyMinMax.getBooleanValue(), m_useAbsolute.getBooleanValue());
+		final FeatureDescriptor<T> featureDescriptor = new FeatureDescriptor<>(isColorImage, m_config.getConvertToLab(),
+				m_config.getFirstDerivative(), m_config.getUseAbsoluteFirstDerivative(), m_config.getSecondDerivative(),
+				m_config.getUseAbsoluteSecondDerivative(), m_config.getHog(), m_config.getHogNumBins(),
+				m_config.getApplyMinMax(), m_config.getUseAbsolute());
 
 		final int batchSize = (int) (table.size() / Runtime.getRuntime().availableProcessors()) + 1;
 		final double progressStepSize = 0.5 / table.size();
-		ArrayList<ImgPlus<T>> listImg = new ArrayList<>(batchSize);
-		ArrayList<RandomAccessibleInterval<LabelingType<L>>> listLabelings = new ArrayList<>(batchSize);
+		final ArrayList<ImgPlus<T>> listImg = new ArrayList<>(batchSize);
+		final ArrayList<RandomAccessibleInterval<LabelingType<L>>> listLabelings = new ArrayList<>(batchSize);
 		for (final DataRow row : table) {
 			if (row.getCell(imgIdx).isMissing() || row.getCell(labelIdx).isMissing()) {
 				throw new IllegalArgumentException("Row '" + row.getKey() + "' contains a missing cell!");
 			}
-			listImg.add(((ImgPlusValue<T>) row.getCell(imgIdx)).getImgPlus());
+			final ImgPlus<T> imgPlus = ((ImgPlusValue<T>) row.getCell(imgIdx)).getImgPlus();
+			listImg.add(imgPlus);
 			listLabelings.add(((LabelingValue<L>) row.getCell(labelIdx)).getLabeling());
 			if (listImg.size() >= batchSize) {
 				threads.add(new ExtractParallel((List<ImgPlus<T>>) listImg.clone(),
@@ -341,28 +216,43 @@ final class HoughForestLearnerNodeModel<T extends RealType<T>, L> extends NodeMo
 		try {
 			final List<Future<List<TrainingObject<FloatType>>>> invokeAll = es.invokeAll(threads);
 			for (final Future<List<TrainingObject<FloatType>>> future : invokeAll)
-				patches.addAll(future.get());
+				trainingObjects.addAll(future.get());
 		} catch (final InterruptedException e) {
 			Thread.currentThread().interrupt();
 			throw new RuntimeException(e);
 		}
 		es.shutdown();
-		getLogger().infoWithFormat("%d patches extracted.", patches.size());
+		m_config.setThresholds(m_thresholds);
+		getLogger().infoWithFormat("%d patches extracted.", trainingObjects.size());
 
 		/*
 		 * Forest Training
 		 */
+		exec.setProgress("Learning trees...");
 		getLogger().info("Train hough forest...");
-		final long seed = m_useSeed.getBooleanValue() ? m_seed.getLongValue() : System.currentTimeMillis();
-		final List<SplitNode> trees = Learner.trainForest(new PatchSample<>(patches), m_depth.getIntValue(),
-				m_minSizeSample.getIntValue(), m_numSamples.getIntValue(), m_numTrees.getIntValue(),
-				m_numSplitFunctions.getIntValue(), m_threshold.getDoubleValue(), exec, seed);
+		final long seed = m_config.getUseSeed() ? m_config.getSeed() : System.currentTimeMillis();
+		final List<SplitNode> trees;
+		// if (m_config.getEntanglement()) {
+		trees = LearnerEntangled.trainForest(new SampleTrainingObject<>(trainingObjects), m_config, exec, seed);
+		// } else {
+		// trees = Learner.trainForest(new SampleTrainingObject<>(trainingObjects), m_config, exec, seed);
+		// }
 		final HoughForest forest = new HoughForest(trees, patchsize, featureDescriptor);
 
 		if (forest.getListOfTrees().isEmpty()) {
 			throw new IllegalStateException("Learned Hough Forest has no trees!");
 		}
 
+		Node[][] nodes = trainingObjects.get(0).getNodeGrid()[0];
+		StringBuilder stringBuilder = new StringBuilder();
+		for (int i = 0; i < nodes[0].length; i++) {
+			for (int j = 0; j < nodes.length; j++) {
+				stringBuilder.append(String.format("%2d ", nodes[j][i].getNodeIdx()));
+			}
+			stringBuilder.append("\n");
+		}
+		System.out.println(stringBuilder.toString());
+		HoughForestEvaluator.printTree(trees.get(0), "", true);
 		return new PortObject[] { new HoughForestModelPortObject(forest, seed) };
 	}
 
@@ -371,6 +261,9 @@ final class HoughForestLearnerNodeModel<T extends RealType<T>, L> extends NodeMo
 	 */
 	@Override
 	protected PortObjectSpec[] configure(final PortObjectSpec[] inSpecs) throws InvalidSettingsException {
+		if (m_config == null) {
+			m_config = new HoughForestLearnerConfig();
+		}
 		fetchImgColIdx((DataTableSpec) inSpecs[0]);
 		fetchLabelingColIdx((DataTableSpec) inSpecs[0]);
 		return new PortObjectSpec[] { new HoughForestModelPortObjectSpec() };
@@ -391,35 +284,82 @@ final class HoughForestLearnerNodeModel<T extends RealType<T>, L> extends NodeMo
 
 	@Override
 	protected void saveSettingsTo(NodeSettingsWO settings) {
-		for (final SettingsModel s : m_listSettingsModels) {
-			s.saveSettingsTo(settings);
+		if (m_config != null) {
+			m_config.saveSettingsTo(settings);
 		}
 	}
 
 	@Override
 	protected void validateSettings(NodeSettingsRO settings) throws InvalidSettingsException {
-		for (final SettingsModel s : m_listSettingsModels) {
-			s.validateSettings(settings);
+		if (m_config != null) {
+			m_config.validateSettings(settings);
 		}
 	}
 
 	@Override
 	protected void loadValidatedSettingsFrom(NodeSettingsRO settings) throws InvalidSettingsException {
-		for (final SettingsModel s : m_listSettingsModels) {
-			s.loadSettingsFrom(settings);
+		if (m_config == null) {
+			m_config = new HoughForestLearnerConfig();
 		}
-
-		if (m_numTrees.getIntValue() < 1) {
-			throw new InvalidSettingsException("The number of trees must be at least 1!");
-		}
-		if (m_numSamples.getIntValue() < m_minSizeSample.getIntValue()) {
-			throw new InvalidSettingsException("The size of the sample must not be lower than the minimum size!");
-		}
+		m_config.loadValidatedSettingsFrom(settings);
 	}
 
 	@Override
 	protected void reset() {
-		// nothing to do
+		m_thresholds = null;
+	}
+
+	private double[] getMins(final RandomAccessibleInterval<FloatType> apply) {
+		final double[] mins = new double[(int) apply.dimension(2)];
+		for (int i = 0; i < apply.dimension(2); i++) {
+			final IntervalView<FloatType> slice = Views.hyperSlice(apply, 2, i);
+			final Cursor<FloatType> cursor = slice.cursor();
+			double min = Long.MAX_VALUE;
+			while (cursor.hasNext()) {
+				cursor.fwd();
+				final double currentValue = cursor.get().getRealDouble();
+				if (currentValue < min) {
+					min = currentValue;
+				}
+			}
+			mins[i] = min;
+		}
+		return mins;
+	}
+
+	private double[] getMaxs(final RandomAccessibleInterval<FloatType> img) {
+		final double[] maxs = new double[(int) img.dimension(2)];
+		for (int i = 0; i < img.dimension(2); i++) {
+			final IntervalView<FloatType> slice = Views.hyperSlice(img, 2, i);
+			final Cursor<FloatType> cursor = slice.cursor();
+			double max = Long.MIN_VALUE;
+			while (cursor.hasNext()) {
+				cursor.fwd();
+				final double currentValue = cursor.get().getRealDouble();
+				if (currentValue > max) {
+					max = currentValue;
+				}
+			}
+			maxs[i] = max;
+		}
+		return maxs;
+	}
+
+	private synchronized void setThresholds(final double[] mins, final double[] maxs) {
+		assert mins.length == maxs.length;
+		if (m_thresholds == null) {
+			m_thresholds = new double[maxs.length];
+			for (int i = 0; i < maxs.length; i++) {
+				m_thresholds[i] = Long.MIN_VALUE;
+			}
+		}
+		assert m_thresholds.length == maxs.length;
+		for (int i = 0; i < m_thresholds.length; i++) {
+			final double d = maxs[i] - mins[i];
+			if (d > m_thresholds[i]) {
+				m_thresholds[i] = d;
+			}
+		}
 	}
 
 	private final class ExtractParallel implements Callable<List<TrainingObject<FloatType>>> {
@@ -448,7 +388,7 @@ final class HoughForestLearnerNodeModel<T extends RealType<T>, L> extends NodeMo
 
 		@Override
 		public List<TrainingObject<FloatType>> call() throws Exception {
-			final List<TrainingObject<FloatType>> allPatches = new ArrayList<>();
+			final List<TrainingObject<FloatType>> allTObjects = new ArrayList<>();
 			while (!m_images.isEmpty()) {
 				final ImgPlus<T> img = m_images.remove(0);
 				final RandomAccessibleInterval<LabelingType<L>> labeling = m_labelings.remove(0);
@@ -462,35 +402,55 @@ final class HoughForestLearnerNodeModel<T extends RealType<T>, L> extends NodeMo
 				}
 				if (img.dimension(0) != labeling.dimension(0) || img.dimension(1) != labeling.dimension(1)) {
 					throw new IllegalArgumentException(
-							"The image and label must have the same size in the first two dimensions!");
+							"The image and labeling must have the same size in the first two dimensions!");
 				}
 				m_exec.checkCanceled();
-				final Grid<FloatType> grid = Grids.createGrid(m_featureDescriptor.apply(img), m_patchGap, m_patchSize);
+				final RandomAccessibleInterval<FloatType> featureImg = m_featureDescriptor.apply(img);
+				setThresholds(getMins(featureImg), getMaxs(featureImg));
+				final Grid<FloatType> grid = Grids.createGrid(featureImg, m_patchGap, m_patchSize);
+				@SuppressWarnings("rawtypes")
+				final TrainingObject[][] trainingObjectGrid = new TrainingObject[(int) grid.dimension(0)][(int) grid
+						.dimension(1)];
+				final Node[][][] nodeGrid = new Node[m_config
+						.getNumTrees()][(int) grid.dimension(0)][(int) grid.dimension(1)];
 				final RandomAccess<RandomAccessibleInterval<FloatType>> raGrid = grid.randomAccess();
 				final LabelRegions<L> labelRegions = new LabelRegions<>(labeling);
+				final int numLabels = labelRegions.getExistingLabels().size();
+				if (numLabels > 1) {
+					throw new IllegalArgumentException("The labeling must contain maximum one label!");
+				}
 				for (int i = 0; i < grid.dimension(0); i++) {
 					for (int j = 0; j < grid.dimension(1); j++) {
-						raGrid.setPosition(new int[] { i, j, 0 });
+						final int[] pos = new int[] { i, j, 0 };
+						raGrid.setPosition(pos);
 						final RandomAccessibleInterval<FloatType> patch = raGrid.get();
 						final Point midOfPatch = new Point(patch.min(0) + patch.dimension(0) / 2,
 								patch.min(1) + patch.dimension(1) / 2);
-						for (LabelRegion<L> labelRegion : labelRegions) {
+						if (numLabels > 0) {
+							final LabelRegion<L> labelRegion = labelRegions
+									.getLabelRegion(labelRegions.getExistingLabels().iterator().next());
 							if (Intervals.contains(labelRegion, midOfPatch)) {
-								allPatches.add(new TrainingObject<>(Views.zeroMin(patch), 1,
+								final TrainingObject<FloatType> tObj = new TrainingObject<>(Views.zeroMin(patch), 1,
 										new int[] {
 												(int) (labelRegion.getCenterOfMass().getFloatPosition(0)
 														- midOfPatch.getFloatPosition(0)),
 												(int) (labelRegion.getCenterOfMass().getFloatPosition(1)
-														- midOfPatch.getFloatPosition(1)) }));
-							} else {
-								allPatches.add(new TrainingObject<>(Views.zeroMin(patch), 0, new int[] {}));
+														- midOfPatch.getFloatPosition(1)) },
+										trainingObjectGrid, pos, nodeGrid);
+								allTObjects.add(tObj);
+								trainingObjectGrid[i][j] = tObj;
+								continue;
 							}
 						}
+						final TrainingObject<FloatType> tObj = new TrainingObject<>(Views.zeroMin(patch), 0,
+								new int[] {}, trainingObjectGrid, pos, nodeGrid);
+						allTObjects.add(tObj);
+						trainingObjectGrid[i][j] = tObj;
 					}
 				}
 				m_exec.setProgress(m_exec.getProgressMonitor().getProgress() + m_progress);
 			}
-			return allPatches;
+			return allTObjects;
 		}
 
 	}
