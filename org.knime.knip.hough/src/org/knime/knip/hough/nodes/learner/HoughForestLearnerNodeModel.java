@@ -88,6 +88,7 @@ import org.knime.knip.hough.ports.HoughForestModelPortObjectSpec;
 
 import net.imagej.ImgPlus;
 import net.imglib2.Cursor;
+import net.imglib2.FinalInterval;
 import net.imglib2.Point;
 import net.imglib2.RandomAccess;
 import net.imglib2.RandomAccessibleInterval;
@@ -148,6 +149,9 @@ final class HoughForestLearnerNodeModel<T extends RealType<T>, L> extends NodeMo
 	@Override
 	protected PortObject[] execute(final PortObject[] inObjects, final ExecutionContext exec) throws Exception {
 		final BufferedDataTable table = (BufferedDataTable) inObjects[0];
+		if (table.size() < 1) {
+			throw new IllegalArgumentException("The table must not be empty!");
+		}
 		// Get the image and labeling column
 		final DataTableSpec spec = ((BufferedDataTable) inObjects[0]).getSpec();
 		final int imgIdx = fetchImgColIdx(spec);
@@ -429,7 +433,11 @@ final class HoughForestLearnerNodeModel<T extends RealType<T>, L> extends NodeMo
 						if (numLabels > 0) {
 							final LabelRegion<L> labelRegion = labelRegions
 									.getLabelRegion(labelRegions.getExistingLabels().iterator().next());
-							if (Intervals.contains(labelRegion, midOfPatch)) {
+							// force interval to be 2d
+							final FinalInterval interval2D = new FinalInterval(
+									new long[] { labelRegion.min(0), labelRegion.min(1) },
+									new long[] { labelRegion.max(0), labelRegion.max(1) });
+							if (Intervals.contains(interval2D, midOfPatch)) {
 								final TrainingObject<FloatType> tObj = new TrainingObject<>(Views.zeroMin(patch), 1,
 										new int[] {
 												(int) (labelRegion.getCenterOfMass().getFloatPosition(0)
