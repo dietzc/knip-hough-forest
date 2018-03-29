@@ -122,9 +122,11 @@ import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.img.ImgView;
 import net.imglib2.img.array.ArrayImgFactory;
 import net.imglib2.interpolation.randomaccess.NLinearInterpolatorFactory;
+import net.imglib2.roi.Regions;
 import net.imglib2.roi.geometric.Polygon;
 import net.imglib2.roi.labeling.ImgLabeling;
 import net.imglib2.roi.labeling.LabelingType;
+import net.imglib2.type.BooleanType;
 import net.imglib2.type.logic.BitType;
 import net.imglib2.type.numeric.RealType;
 import net.imglib2.type.numeric.integer.IntType;
@@ -511,15 +513,22 @@ final class HoughForestPredictorNodeModel<T extends RealType<T>> extends NodeMod
 			final List<int[]> maxVotesPositions = new ArrayList<>();
 			final RandomAccessibleInterval<BitType> maxima;
 			if (m_config.getMultipleDetection()) {
-				final MaximumFinderOp<T> maximumFinderOp = new MaximumFinderOp<T>(0, 0);
+				final MaximumFinderOp<T> maximumFinderOp = new MaximumFinderOp<T>(0,
+						m_config.getMaxSuppressionMultipleDetection());
 				final IterableInterval<BitType> thresholdedVotings = m_ops.threshold().apply(Views.iterable(votes),
 						new FloatType((float) m_config.getThresholdMultipleDetection()));
 				maxima = m_ops.create().img(votes, new BitType());
-				maximumFinderOp.compute((RandomAccessibleInterval<T>) thresholdedVotings, maxima);
-				final Cursor<BitType> cursorMaxima = Views.flatIterable(maxima).cursor();
+				maximumFinderOp.compute((RandomAccessibleInterval<T>) votes, maxima);
+				// final Cursor<BitType> cursorMaxima = Views.flatIterable(maxima).cursor();
+				RandomAccess<BitType> randomAccess = maxima.randomAccess();
+				@SuppressWarnings("rawtypes")
+				final Cursor<Void> cursorMaxima = Regions
+						.iterable((RandomAccessibleInterval<BooleanType>) thresholdedVotings).localizingCursor();
+				// Cursor<BitType> cursor = thresholdedVotings.cursor();
 				while (cursorMaxima.hasNext()) {
 					cursorMaxima.fwd();
-					if (cursorMaxima.get().get()) {
+					randomAccess.setPosition(cursorMaxima);
+					if (randomAccess.get().get()) {
 						int[] maxVotesPos = new int[votes.numDimensions()];
 						cursorMaxima.localize(maxVotesPos);
 						maxVotesPositions.add(maxVotesPos);
@@ -552,6 +561,7 @@ final class HoughForestPredictorNodeModel<T extends RealType<T>> extends NodeMod
 			// Draw every found object
 			final int sizeBackprojection = m_config.getSpanIntervalBackprojection();
 			boolean predictionSuccessful = true;
+			int count = 0;
 			for (final int[] maxVotesPos : maxVotesPositions) {
 				// will collect all vertices which voted inside the field around the
 				// point with max votes
@@ -582,7 +592,7 @@ final class HoughForestPredictorNodeModel<T extends RealType<T>> extends NodeMod
 					for (int i = (int) boundingBox.realMin(0); i <= boundingBox.realMax(0); i++) {
 						for (int j = (int) boundingBox.realMin(1); j <= boundingBox.realMax(1); j++) {
 							raLabeling.setPosition(new int[] { i, j });
-							raLabeling.get().add("1");
+							raLabeling.get().add("Object" + count);
 						}
 					}
 
@@ -595,7 +605,7 @@ final class HoughForestPredictorNodeModel<T extends RealType<T>> extends NodeMod
 							for (int j = maxVotesPos[1] - sizeBackprojection; j <= maxVotesPos[1]
 									+ sizeBackprojection; j++) {
 								raLabeling.setPosition(new int[] { i, j });
-								raLabeling.get().add("2");
+								raLabeling.get().add("MaxInterval");
 							}
 						}
 
@@ -604,10 +614,11 @@ final class HoughForestPredictorNodeModel<T extends RealType<T>> extends NodeMod
 						 */
 						for (final Localizable vertix : vertices) {
 							raLabeling.setPosition(vertix);
-							raLabeling.get().add("3");
+							raLabeling.get().add("Vertix");
 						}
 					}
 				}
+				count++;
 			}
 
 			if (!predictionSuccessful) {

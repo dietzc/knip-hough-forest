@@ -19,10 +19,12 @@ public final class HoughForestPredictorConfig {
 	// Bounding Box Estimation
 	private final SettingsModelIntegerBounded m_spanIntervalBackprojection = createSpanIntervalBackprojectionModel();
 	// Multiple Detection
-	private final SettingsModelDoubleBounded m_thresholdMultipleDetection = createThresholdMultipleDetectionDoubleModel();
+	private final SettingsModelBoolean m_multipleDetection = createMultipleDetectionBoolModel();
+	private final SettingsModelDoubleBounded m_thresholdMultipleDetection = createThresholdMultipleDetectionDoubleModel(
+			m_multipleDetection);
+	private final SettingsModelDoubleBounded m_maxSuppressionMultipleDetection = createMaxSuppressionMultipleDetectionDoubleModel(
+			m_multipleDetection);
 	private final SettingsModelDoubleBounded m_sigma = createSigmaModel();
-	private final SettingsModelBoolean m_multipleDetection = createMultipleDetectionBoolModel(
-			m_thresholdMultipleDetection);
 	// Scales
 	private final SettingsModelBoolean m_scaleBool1 = createScalesBoolModel(1);
 	private final SettingsModelBoolean m_scaleBool2 = createScalesBoolModel(2);
@@ -41,9 +43,10 @@ public final class HoughForestPredictorConfig {
 	private final SettingsModelBoolean m_outputNodeIdx = createOutputNodeIdxBoolModel();
 
 	private final SettingsModel[] m_listSettingsModels = { m_colImage, m_patchGapX, m_patchGapY,
-			m_spanIntervalBackprojection, m_sigma, m_thresholdMultipleDetection, m_multipleDetection, m_scaleBool1,
-			m_scaleBool2, m_scaleBool3, m_scaleBool4, m_scaleValue1, m_scaleValue2, m_scaleValue3, m_scaleValue4,
-			m_outputVotes, m_outputMaxima, m_outputAdvanced, m_outputFeatureImg, m_outputNodeIdx };
+			m_spanIntervalBackprojection, m_sigma, m_thresholdMultipleDetection, m_multipleDetection,
+			m_maxSuppressionMultipleDetection, m_scaleBool1, m_scaleBool2, m_scaleBool3, m_scaleBool4, m_scaleValue1,
+			m_scaleValue2, m_scaleValue3, m_scaleValue4, m_outputVotes, m_outputMaxima, m_outputAdvanced,
+			m_outputFeatureImg, m_outputNodeIdx };
 
 	static SettingsModelString createColSelectModel() {
 		return new SettingsModelString("image_column", "");
@@ -65,16 +68,25 @@ public final class HoughForestPredictorConfig {
 		return new SettingsModelIntegerBounded("span_area_backprojection", 15, 1, Integer.MAX_VALUE);
 	}
 
-	static SettingsModelBoolean createMultipleDetectionBoolModel(final SettingsModelDouble thresholdModel) {
-		final SettingsModelBoolean settingsModelBoolean = new SettingsModelBoolean("multiple_detection_bool", false);
-		settingsModelBoolean.addChangeListener(e -> thresholdModel.setEnabled(settingsModelBoolean.getBooleanValue()));
-		return settingsModelBoolean;
+	static SettingsModelBoolean createMultipleDetectionBoolModel() {
+		return new SettingsModelBoolean("multiple_detection_bool", false);
 	}
 
-	static SettingsModelDoubleBounded createThresholdMultipleDetectionDoubleModel() {
+	static SettingsModelDoubleBounded createThresholdMultipleDetectionDoubleModel(
+			final SettingsModelBoolean thresholdModel) {
 		final SettingsModelDoubleBounded settingsModelDouble = new SettingsModelDoubleBounded(
 				"multiple_detection_threshold", 1.0, 0.0, Double.MAX_VALUE);
 		settingsModelDouble.setEnabled(false);
+		thresholdModel.addChangeListener(l -> settingsModelDouble.setEnabled(thresholdModel.getBooleanValue()));
+		return settingsModelDouble;
+	}
+
+	static SettingsModelDoubleBounded createMaxSuppressionMultipleDetectionDoubleModel(
+			final SettingsModelBoolean thresholdModel) {
+		final SettingsModelDoubleBounded settingsModelDouble = new SettingsModelDoubleBounded(
+				"multiple_detection_max_suppression", 25.0, 0.0, Double.MAX_VALUE);
+		settingsModelDouble.setEnabled(false);
+		thresholdModel.addChangeListener(l -> settingsModelDouble.setEnabled(thresholdModel.getBooleanValue()));
 		return settingsModelDouble;
 	}
 
@@ -232,6 +244,13 @@ public final class HoughForestPredictorConfig {
 	 */
 	public boolean getOutputNodeIdx() {
 		return m_outputNodeIdx.getBooleanValue();
+	}
+
+	/**
+	 * @return the maxSuppressionMultipleDetection
+	 */
+	public double getMaxSuppressionMultipleDetection() {
+		return m_maxSuppressionMultipleDetection.getDoubleValue();
 	}
 
 }

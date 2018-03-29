@@ -114,12 +114,15 @@ final class HoughForestPredictorNodeDialog extends DefaultNodeSettingsPane {
 
 		// Detection
 		createNewGroup("Detection");
-		final SettingsModelDouble thresholdModel = HoughForestPredictorConfig
-				.createThresholdMultipleDetectionDoubleModel();
 		final SettingsModelBoolean multipleDetectionBoolModel = HoughForestPredictorConfig
-				.createMultipleDetectionBoolModel(thresholdModel);
+				.createMultipleDetectionBoolModel();
 		addDialogComponent(new DialogComponentBoolean(multipleDetectionBoolModel, "Detect multiple objects"));
+		final SettingsModelDouble thresholdModel = HoughForestPredictorConfig
+				.createThresholdMultipleDetectionDoubleModel(multipleDetectionBoolModel);
 		addDialogComponent(new DialogComponentNumber(thresholdModel, "Threshold", 0.1));
+		final SettingsModelDouble maxSuppressionModel = HoughForestPredictorConfig
+				.createMaxSuppressionMultipleDetectionDoubleModel(multipleDetectionBoolModel);
+		addDialogComponent(new DialogComponentNumber(maxSuppressionModel, "Max. suppression", 5.0));
 
 		// Back Projection
 		createNewGroup("Back Projection");
