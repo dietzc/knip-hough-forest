@@ -58,6 +58,7 @@ import java.util.concurrent.Future;
 
 import org.knime.core.data.DataRow;
 import org.knime.core.data.DataTableSpec;
+import org.knime.core.data.RowKey;
 import org.knime.core.data.container.CloseableRowIterator;
 import org.knime.core.node.BufferedDataTable;
 import org.knime.core.node.CanceledExecutionException;
@@ -197,6 +198,7 @@ final class HoughForestLearnerNodeModel<T extends RealType<T>, L> extends NodeMo
 		final int batchSize = (int) (table.size() / Runtime.getRuntime().availableProcessors()) + 1;
 		final double progressStepSize = 0.5 / table.size();
 		final ArrayList<ImgPlus<T>> listImg = new ArrayList<>(batchSize);
+		final ArrayList<RowKey> listRowKey = new ArrayList<>(batchSize);
 		final ArrayList<RandomAccessibleInterval<LabelingType<L>>> listLabelings = new ArrayList<>(batchSize);
 		for (final DataRow row : table) {
 			if (row.getCell(imgIdx).isMissing() || row.getCell(labelIdx).isMissing()) {
@@ -204,18 +206,21 @@ final class HoughForestLearnerNodeModel<T extends RealType<T>, L> extends NodeMo
 			}
 			final ImgPlus<T> imgPlus = ((ImgPlusValue<T>) row.getCell(imgIdx)).getImgPlus();
 			listImg.add(imgPlus);
+			listRowKey.add(row.getKey());
 			listLabelings.add(((LabelingValue<L>) row.getCell(labelIdx)).getLabeling());
 			if (listImg.size() >= batchSize) {
 				threads.add(new ExtractParallel((List<ImgPlus<T>>) listImg.clone(),
-						(List<RandomAccessibleInterval<LabelingType<L>>>) listLabelings.clone(), featureDescriptor,
-						patchGap, patchsize, exec, progressStepSize));
+						(List<RandomAccessibleInterval<LabelingType<L>>>) listLabelings.clone(),
+						(List<RowKey>) listRowKey.clone(), featureDescriptor, patchGap, patchsize, exec,
+						progressStepSize));
 				listImg.clear();
+				listRowKey.clear();
 				listLabelings.clear();
 			}
 		}
 		if (listImg.size() > 0) {
-			threads.add(new ExtractParallel(listImg, listLabelings, featureDescriptor, patchGap, patchsize, exec,
-					progressStepSize));
+			threads.add(new ExtractParallel(listImg, listLabelings, listRowKey, featureDescriptor, patchGap, patchsize,
+					exec, progressStepSize));
 		}
 		try {
 			final List<Future<List<TrainingObject<FloatType>>>> invokeAll = es.invokeAll(threads);
@@ -370,6 +375,7 @@ final class HoughForestLearnerNodeModel<T extends RealType<T>, L> extends NodeMo
 
 		private final List<ImgPlus<T>> m_images;
 		private final List<RandomAccessibleInterval<LabelingType<L>>> m_labelings;
+		private final List<RowKey> m_listRowKey;
 		private final long[] m_patchGap;
 		private final long[] m_patchSize;
 		private final ExecutionContext m_exec;
@@ -377,17 +383,18 @@ final class HoughForestLearnerNodeModel<T extends RealType<T>, L> extends NodeMo
 		private final FeatureDescriptor<T> m_featureDescriptor;
 
 		private ExtractParallel(final List<ImgPlus<T>> images,
-				final List<RandomAccessibleInterval<LabelingType<L>>> labelings,
+				final List<RandomAccessibleInterval<LabelingType<L>>> labelings, final List<RowKey> listRowKey,
 				final FeatureDescriptor<T> featureDescriptor, final long[] patchGap, final long[] patchSize,
 				final ExecutionContext exec, final double progressStepSize) {
 			assert images.size() == labelings.size();
 			m_images = images;
 			m_labelings = labelings;
-			this.m_featureDescriptor = featureDescriptor;
-			this.m_patchGap = patchGap;
-			this.m_patchSize = patchSize;
-			this.m_exec = exec;
-			this.m_progress = progressStepSize;
+			m_listRowKey = listRowKey;
+			m_featureDescriptor = featureDescriptor;
+			m_patchGap = patchGap;
+			m_patchSize = patchSize;
+			m_exec = exec;
+			m_progress = progressStepSize;
 		}
 
 		@Override
@@ -395,18 +402,21 @@ final class HoughForestLearnerNodeModel<T extends RealType<T>, L> extends NodeMo
 			final List<TrainingObject<FloatType>> allTObjects = new ArrayList<>();
 			while (!m_images.isEmpty()) {
 				final ImgPlus<T> img = m_images.remove(0);
+				final RowKey rowKey = m_listRowKey.remove(0);
 				final RandomAccessibleInterval<LabelingType<L>> labeling = m_labelings.remove(0);
 				if (img.numDimensions() != 2 && !(img.numDimensions() == 3 && img.dimension(2) == 3)) {
-					throw new IllegalArgumentException("The images must be either 2D or 3D with three channels!");
+					throw new IllegalArgumentException("Error processing row '" + rowKey
+							+ "': The images must be either 2D or 3D with three channels!");
 				}
 				final boolean isColorImage = img.numDimensions() == 3;
 				if (!(isColorImage && m_featureDescriptor.isColorImage())
 						&& !(!isColorImage && !m_featureDescriptor.isColorImage())) {
-					throw new IllegalArgumentException("All input images must be either color or grayscale!");
+					throw new IllegalArgumentException("Error processing row '" + rowKey
+							+ "': All input images must be either color or grayscale!");
 				}
 				if (img.dimension(0) != labeling.dimension(0) || img.dimension(1) != labeling.dimension(1)) {
-					throw new IllegalArgumentException(
-							"The image and labeling must have the same size in the first two dimensions!");
+					throw new IllegalArgumentException("Error processing row '" + rowKey
+							+ "': The image and labeling must have the same size in the first two dimensions!");
 				}
 				m_exec.checkCanceled();
 				final RandomAccessibleInterval<FloatType> featureImg = m_featureDescriptor.apply(img);
@@ -421,7 +431,8 @@ final class HoughForestLearnerNodeModel<T extends RealType<T>, L> extends NodeMo
 				final LabelRegions<L> labelRegions = new LabelRegions<>(labeling);
 				final int numLabels = labelRegions.getExistingLabels().size();
 				if (numLabels > 1) {
-					throw new IllegalArgumentException("The labeling must contain maximum one label!");
+					throw new IllegalArgumentException(
+							"Error processing row '" + rowKey + "': The labeling must contain maximum one label!");
 				}
 				for (int i = 0; i < grid.dimension(0); i++) {
 					for (int j = 0; j < grid.dimension(1); j++) {

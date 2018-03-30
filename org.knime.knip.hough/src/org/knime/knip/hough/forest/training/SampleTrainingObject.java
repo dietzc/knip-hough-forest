@@ -73,8 +73,9 @@ public final class SampleTrainingObject<T extends RealType<T>> {
 	 */
 	public SampleTrainingObject(final List<TrainingObject<T>> listOfElements) {
 		m_listOfElements = listOfElements;
-		m_numberElementsOfClazzes = computeNumberElemtentsOfClazzes();
-		m_offsets = collectOffsets();
+		m_numberElementsOfClazzes = new int[2];
+		m_offsets = new ArrayList<>();
+		storeObjectMetadata();
 		m_entropy = 0;
 	}
 
@@ -119,13 +120,17 @@ public final class SampleTrainingObject<T extends RealType<T>> {
 		return m_numberElementsOfClazzes[1];
 	}
 
-	private int[] computeNumberElemtentsOfClazzes() {
+	private void storeObjectMetadata() {
 		int num = 0;
 		for (final TrainingObject<T> element : m_listOfElements) {
-			if (element.getClazz() == 0)
+			if (element.getClazz() == 0) {
 				num++;
+			} else {
+				m_offsets.add(element.getOffset());
+			}
 		}
-		return new int[] { num, size() - num };
+		m_numberElementsOfClazzes[0] = num;
+		m_numberElementsOfClazzes[1] = size() - num;
 	}
 
 	/**
@@ -133,15 +138,6 @@ public final class SampleTrainingObject<T extends RealType<T>> {
 	 */
 	public List<int[]> getOffsets() {
 		return m_offsets;
-	}
-
-	private List<int[]> collectOffsets() {
-		final List<int[]> vectors = new ArrayList<>();
-		for (final TrainingObject<T> element : m_listOfElements) {
-			if (element.getClazz() == 1)
-				vectors.add(element.getOffset());
-		}
-		return vectors;
 	}
 
 	@Override

@@ -68,9 +68,8 @@ public final class TrainingObject<T> extends PatchObject<T> {
 	 * @param clazz 0 or 1 (other numbers are mapped to 1)
 	 * @param offset a two dimensional offset vector
 	 */
-	@SuppressWarnings("rawtypes")
 	public TrainingObject(final RandomAccessibleInterval<T> patch, final int clazz, final int[] offset,
-			TrainingObject[][] grid, final int[] position, final Node[][][] nodeGrid) {
+			TrainingObject<T>[][] grid, final int[] position, final Node[][][] nodeGrid) {
 		super(patch, grid, position, nodeGrid);
 		m_clazz = clazz == 0 ? 0 : 1;
 		m_offset = offset;

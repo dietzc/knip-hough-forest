@@ -51,6 +51,8 @@ package org.knime.knip.hough.forest.training;
 import java.util.Optional;
 import java.util.Random;
 
+import org.knime.core.node.CanceledExecutionException;
+import org.knime.core.node.ExecutionContext;
 import org.knime.knip.hough.forest.HoughForestUtils;
 import org.knime.knip.hough.forest.node.EntangledLeafNode;
 import org.knime.knip.hough.forest.node.FrontierNode;
@@ -90,7 +92,8 @@ public final class LearnerUtils {
 	}
 
 	static <T extends RealType<T>> SplitFunction findBestSplitFunction(final SampleTrainingObject<T> sample,
-			final HoughForestLearnerConfig config, final SampleTrainingObject<T> trainingSet, final Random random) {
+			final HoughForestLearnerConfig config, final SampleTrainingObject<T> trainingSet, final Random random)
+			throws CanceledExecutionException {
 		final SplitFunction[] splitFunctions = SplitUtils.createSplitFunctions(sample.getElementsOfSample().get(0),
 				config, random.nextLong());
 		SplitFunction bestSplitFunction = splitFunctions[0];
@@ -141,13 +144,14 @@ public final class LearnerUtils {
 
 	static <T extends RealType<T>> SplitFunction findEntangledBestSplitFunction(final SampleTrainingObject<T> sample,
 			final HoughForestLearnerConfig config, final SampleTrainingObject<T> trainingSet, final int treeIdx,
-			final int depth, final Random random) {
+			final int depth, final Random random, final ExecutionContext exec) throws CanceledExecutionException {
 		final SplitFunction[] splitFunctions = SplitUtils.createEntangledSplitFunctions(sample, depth, config,
 				random.nextLong());
 		SplitFunction bestSplitFunction = splitFunctions[0];
 		double minInformationGain = Integer.MAX_VALUE;
 
 		for (int i = 0; i < splitFunctions.length; i++) {
+			exec.checkCanceled();
 			// split
 			final SampleTrainingObject<T>[] split = SplitUtils.split(sample.getElementsOfSample(), splitFunctions[i],
 					treeIdx);

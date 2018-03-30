@@ -83,7 +83,7 @@ public final class DefaultSplitFunction implements SplitFunction {
 
 	public static <T extends RealType<T>> DefaultSplitFunction createRandom(final TrainingObject<?> sample,
 			final HoughForestLearnerConfig config, Random random) {
-		final int channel = random.nextInt((int) sample.getPatch().dimension(2));
+		final int channel = random.nextInt(sample.getNumFeatures());
 		return new DefaultSplitFunction(
 				new int[][] {
 						{ random.nextInt(config.getPatchWidth()), random.nextInt(config.getPatchHeight()), channel },
@@ -93,7 +93,7 @@ public final class DefaultSplitFunction implements SplitFunction {
 
 	@Override
 	public <T extends RealType<T>> Split apply(final PatchObject<T> pObj, final int treeIdx, final int[] stride) {
-		final RandomAccess<T> raPatch = pObj.getPatch().randomAccess();
+		final RandomAccess<T> raPatch = pObj.getRandomAccess(treeIdx);
 		raPatch.setPosition(m_indices[0]);
 		final float value1 = raPatch.get().getRealFloat();
 		raPatch.setPosition(m_indices[1]);

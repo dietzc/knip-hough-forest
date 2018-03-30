@@ -50,6 +50,7 @@ package org.knime.knip.hough.forest.training;
 
 import org.knime.knip.hough.forest.node.Node;
 
+import net.imglib2.RandomAccess;
 import net.imglib2.RandomAccessibleInterval;
 
 /**
@@ -59,21 +60,29 @@ import net.imglib2.RandomAccessibleInterval;
  */
 public abstract class PatchObject<T> {
 	private final RandomAccessibleInterval<T> m_patch;
+	private final RandomAccess<T>[] m_randomAccess;
 	private final PatchObject<T>[][] m_grid;
 	private final int[] m_position;
 	private final Node[][][] m_nodeGrid;
+	private final int m_numFeatures;
 
 	/**
 	 * Creates a new object conatining all relevant parameters.
 	 * 
 	 * @param patch a {@link RandomAccessibleInterval}
 	 */
+	@SuppressWarnings("unchecked")
 	public PatchObject(final RandomAccessibleInterval<T> patch, final PatchObject<T>[][] grid, final int[] position,
 			final Node[][][] nodeGrid) {
 		m_patch = patch;
+		m_randomAccess = new RandomAccess[nodeGrid.length];
+		for (int i = 0; i < m_randomAccess.length; i++) {
+			m_randomAccess[i] = patch.randomAccess();
+		}
 		m_grid = grid;
 		m_position = position;
 		m_nodeGrid = nodeGrid;
+		m_numFeatures = (int) patch.dimension(2);
 	}
 
 	/**
@@ -81,6 +90,10 @@ public abstract class PatchObject<T> {
 	 */
 	public RandomAccessibleInterval<T> getPatch() {
 		return m_patch;
+	}
+
+	public RandomAccess<T> getRandomAccess(final int i) {
+		return m_randomAccess[i];
 	}
 
 	/**
@@ -117,5 +130,12 @@ public abstract class PatchObject<T> {
 
 	public void setNodeGrid(final int idx, final Node node) {
 		m_nodeGrid[idx][m_position[0]][m_position[1]] = node;
+	}
+
+	/**
+	 * @return the numFeatures
+	 */
+	public int getNumFeatures() {
+		return m_numFeatures;
 	}
 }

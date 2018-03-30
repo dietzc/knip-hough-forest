@@ -55,6 +55,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Random;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 
@@ -150,7 +151,7 @@ public final class LearnerEntangled {
 
 			// get best split function
 			final SplitFunction bestSplitFunction = LearnerUtils.findEntangledBestSplitFunction(sampledTObjects, config,
-					trainingSet, treeIdx, depth, random);
+					trainingSet, treeIdx, depth, random, exec);
 
 			// split with the best split function
 			final SampleTrainingObject<T>[] bestSplit = SplitUtils.split(sampledTObjects.getElementsOfSample(),
@@ -219,10 +220,11 @@ public final class LearnerEntangled {
 	 * @param exec execution context
 	 * @param m_progress
 	 * @return list of trees
-	 * @throws Exception
+	 * @throws ExecutionException
 	 */
 	public static <T extends RealType<T>> List<SplitNode> trainForest(final SampleTrainingObject<T> trainingSet,
-			final HoughForestLearnerConfig config, final ExecutionContext exec, final long seed) throws Exception {
+			final HoughForestLearnerConfig config, final ExecutionContext exec, final long seed)
+			throws ExecutionException {
 		final ExecutorService es = KNIPGateway.threads().getExecutorService();
 		final List<TrainParallel<T>> threads = new ArrayList<>(config.getNumTrees());
 		final List<SplitNode> trees = new ArrayList<>();
@@ -232,6 +234,7 @@ public final class LearnerEntangled {
 			threads.add(
 					new TrainParallel<>(trainingSet, config, exec, 0.5 / config.getNumTrees(), i, random.nextLong()));
 		}
+		long start = System.currentTimeMillis();
 		try {
 			final List<Future<SplitNode>> invokeAll = es.invokeAll(threads);
 			for (final Future<SplitNode> future : invokeAll)
@@ -242,6 +245,8 @@ public final class LearnerEntangled {
 		}
 		es.shutdown();
 		LOGGER.info("Learning successfully finished.");
+		long stop = System.currentTimeMillis();
+		LOGGER.debug("Execution time for learning: " + (stop - start) + "ms");
 		return trees;
 	}
 

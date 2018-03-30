@@ -52,6 +52,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
+import org.knime.core.node.CanceledExecutionException;
 import org.knime.knip.hough.forest.split.SplitFunction.Split;
 import org.knime.knip.hough.forest.training.SampleTrainingObject;
 import org.knime.knip.hough.forest.training.TrainingObject;
@@ -140,10 +141,11 @@ public final class SplitUtils {
 	 * @param splitFunction the {@link SplitFunction}
 	 * @return a 2d array of {@link SampleTrainingObject}, containing the left split in the first and the right split in
 	 *         the second dimension
+	 * @throws CanceledExecutionException
 	 */
 	@SuppressWarnings("unchecked")
 	public static <T extends RealType<T>> SampleTrainingObject<T>[] split(final List<TrainingObject<T>> sample,
-			final SplitFunction splitFunction, final int treeIdx) {
+			final SplitFunction splitFunction, final int treeIdx) throws CanceledExecutionException {
 
 		final List<TrainingObject<T>> left = new ArrayList<>();
 		final List<TrainingObject<T>> right = new ArrayList<>();
