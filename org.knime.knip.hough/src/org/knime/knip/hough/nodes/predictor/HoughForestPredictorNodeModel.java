@@ -501,10 +501,9 @@ final class HoughForestPredictorNodeModel<T extends RealType<T>> extends NodeMod
 			}
 
 			// Blur votes
-			final double sigma = m_config.getSigma();
 			final RandomAccessibleInterval<FloatType> votes = m_ops.filter().convolve(Views.stack(votesAllSc),
-					(RandomAccessibleInterval<T>) m_ops.create().kernelGauss(sigma, sigma, 0)); // TODO: sigma for 3rd
-																								// dim?
+					(RandomAccessibleInterval<T>) m_ops.create().kernelGauss(m_config.getSigmaXY(),
+							m_config.getSigmaXY(), m_config.getSigmaZ()));
 
 			/*
 			 * === Bounding Box Estimation ===

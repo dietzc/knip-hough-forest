@@ -24,7 +24,7 @@ public final class HoughForestPredictorConfig {
 			m_multipleDetection);
 	private final SettingsModelDoubleBounded m_maxSuppressionMultipleDetection = createMaxSuppressionMultipleDetectionDoubleModel(
 			m_multipleDetection);
-	private final SettingsModelDoubleBounded m_sigma = createSigmaModel();
+	private final SettingsModelDoubleBounded m_sigmaXY = createSigmaXYModel();
 	// Scales
 	private final SettingsModelBoolean m_scaleBool1 = createScalesBoolModel(1);
 	private final SettingsModelBoolean m_scaleBool2 = createScalesBoolModel(2);
@@ -35,6 +35,8 @@ public final class HoughForestPredictorConfig {
 	private final SettingsModelDouble m_scaleValue3 = createScalesDoubleModel(3);
 	private final SettingsModelDouble m_scaleValue4 = createScalesDoubleModel(4);
 	private double[] m_scales;
+
+	private final SettingsModelDoubleBounded m_sigmaZ = createSigmaZModel(m_scaleBool2);
 	// Output
 	private final SettingsModelBoolean m_outputVotes = createOutputVotesBoolModel();
 	private final SettingsModelBoolean m_outputMaxima = createOutputMaximaBoolModel();
@@ -43,7 +45,7 @@ public final class HoughForestPredictorConfig {
 	private final SettingsModelBoolean m_outputNodeIdx = createOutputNodeIdxBoolModel();
 
 	private final SettingsModel[] m_listSettingsModels = { m_colImage, m_patchGapX, m_patchGapY,
-			m_spanIntervalBackprojection, m_sigma, m_thresholdMultipleDetection, m_multipleDetection,
+			m_spanIntervalBackprojection, m_sigmaXY, m_sigmaZ, m_thresholdMultipleDetection, m_multipleDetection,
 			m_maxSuppressionMultipleDetection, m_scaleBool1, m_scaleBool2, m_scaleBool3, m_scaleBool4, m_scaleValue1,
 			m_scaleValue2, m_scaleValue3, m_scaleValue4, m_outputVotes, m_outputMaxima, m_outputAdvanced,
 			m_outputFeatureImg, m_outputNodeIdx };
@@ -60,8 +62,17 @@ public final class HoughForestPredictorConfig {
 		return new SettingsModelIntegerBounded("gap_vertical", 8, 0, Integer.MAX_VALUE);
 	}
 
-	static SettingsModelDoubleBounded createSigmaModel() {
-		return new SettingsModelDoubleBounded("sigma", 10.0, 0.0, Double.MAX_VALUE);
+	static SettingsModelDoubleBounded createSigmaXYModel() {
+		return new SettingsModelDoubleBounded("sigma_xy", 3.0, 0.0, Double.MAX_VALUE);
+	}
+
+	static SettingsModelDoubleBounded createSigmaZModel(final SettingsModelBoolean scale2Model) {
+		final SettingsModelDoubleBounded settingsModelDoubleBounded = new SettingsModelDoubleBounded("sigma_z", 1.0,
+				0.0, Double.MAX_VALUE);
+		settingsModelDoubleBounded.setEnabled(false);
+		scale2Model.addChangeListener(
+				l -> settingsModelDoubleBounded.setEnabled(scale2Model.getBooleanValue() && scale2Model.isEnabled()));
+		return settingsModelDoubleBounded;
 	}
 
 	static SettingsModelIntegerBounded createSpanIntervalBackprojectionModel() {
@@ -191,10 +202,17 @@ public final class HoughForestPredictorConfig {
 	}
 
 	/**
-	 * @return the sigma
+	 * @return the sigmaXY
 	 */
-	public double getSigma() {
-		return m_sigma.getDoubleValue();
+	public double getSigmaXY() {
+		return m_sigmaXY.getDoubleValue();
+	}
+
+	/**
+	 * @return the sigmaZ
+	 */
+	public double getSigmaZ() {
+		return m_sigmaZ.getDoubleValue();
 	}
 
 	/**

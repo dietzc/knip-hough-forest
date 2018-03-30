@@ -82,6 +82,7 @@ final class HoughForestPredictorNodeDialog extends DefaultNodeSettingsPane {
 
 		// Voting
 		createNewGroup("Voting");
+		addDialogComponent(new DialogComponentNumber(HoughForestPredictorConfig.createSigmaXYModel(), "Sigma XY", 1.0));
 		setHorizontalPlacement(true);
 		final SettingsModelBoolean scalesBoolModel1 = HoughForestPredictorConfig.createScalesBoolModel(1);
 		addDialogComponent(new DialogComponentBoolean(scalesBoolModel1, "Scale 1"));
@@ -110,7 +111,8 @@ final class HoughForestPredictorNodeDialog extends DefaultNodeSettingsPane {
 		addDialogComponent(new DialogComponentNumber(scalesDoubleModel4, "", 0.1));
 
 		setHorizontalPlacement(false);
-		addDialogComponent(new DialogComponentNumber(HoughForestPredictorConfig.createSigmaModel(), "Sigma", 1));
+		addDialogComponent(new DialogComponentNumber(HoughForestPredictorConfig.createSigmaZModel(scalesBoolModel2),
+				"Sigma Z", 1.0));
 
 		// Detection
 		createNewGroup("Detection");
