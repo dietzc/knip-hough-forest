@@ -59,7 +59,7 @@ import net.imglib2.RandomAccessibleInterval;
  * @author Simon Schmid, University of Konstanz
  */
 public abstract class PatchObject<T> {
-	private final RandomAccessibleInterval<T> m_patch;
+	private final int[] m_min;
 	private final RandomAccess<T>[] m_randomAccess;
 	private final PatchObject<T>[][] m_grid;
 	private final int[] m_position;
@@ -71,14 +71,10 @@ public abstract class PatchObject<T> {
 	 * 
 	 * @param patch a {@link RandomAccessibleInterval}
 	 */
-	@SuppressWarnings("unchecked")
-	public PatchObject(final RandomAccessibleInterval<T> patch, final PatchObject<T>[][] grid, final int[] position,
-			final Node[][][] nodeGrid) {
-		m_patch = patch;
-		m_randomAccess = new RandomAccess[nodeGrid.length];
-		for (int i = 0; i < m_randomAccess.length; i++) {
-			m_randomAccess[i] = patch.randomAccess();
-		}
+	public PatchObject(final RandomAccessibleInterval<T> patch, final RandomAccess<T>[] randomAccess,
+			final PatchObject<T>[][] grid, final int[] position, final Node[][][] nodeGrid) {
+		m_min = new int[] { (int) patch.min(0), (int) patch.min(1) };
+		m_randomAccess = randomAccess;
 		m_grid = grid;
 		m_position = position;
 		m_nodeGrid = nodeGrid;
@@ -86,10 +82,10 @@ public abstract class PatchObject<T> {
 	}
 
 	/**
-	 * @return the patch of this training object
+	 * @return min of patch
 	 */
-	public RandomAccessibleInterval<T> getPatch() {
-		return m_patch;
+	public int[] getMin() {
+		return m_min;
 	}
 
 	public RandomAccess<T> getRandomAccess(final int i) {

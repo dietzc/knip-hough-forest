@@ -420,11 +420,18 @@ final class HoughForestLearnerNodeModel<T extends RealType<T>, L> extends NodeMo
 				}
 				m_exec.checkCanceled();
 				final RandomAccessibleInterval<FloatType> featureImg = m_featureDescriptor.apply(img);
+
+				@SuppressWarnings("unchecked")
+				final RandomAccess<FloatType>[] randomAccess = new RandomAccess[m_config.getNumTrees()];
+				for (int i = 0; i < randomAccess.length; i++) {
+					randomAccess[i] = featureImg.randomAccess();
+				}
+
 				setThresholds(getMins(featureImg), getMaxs(featureImg));
 				final Grid<FloatType> grid = Grids.createGrid(featureImg, m_patchGap, m_patchSize);
-				@SuppressWarnings("rawtypes")
-				final TrainingObject[][] trainingObjectGrid = new TrainingObject[(int) grid.dimension(0)][(int) grid
-						.dimension(1)];
+				@SuppressWarnings("unchecked")
+				final TrainingObject<FloatType>[][] trainingObjectGrid = new TrainingObject[(int) grid
+						.dimension(0)][(int) grid.dimension(1)];
 				final Node[][][] nodeGrid = new Node[m_config
 						.getNumTrees()][(int) grid.dimension(0)][(int) grid.dimension(1)];
 				final RandomAccess<RandomAccessibleInterval<FloatType>> raGrid = grid.randomAccess();
@@ -449,7 +456,8 @@ final class HoughForestLearnerNodeModel<T extends RealType<T>, L> extends NodeMo
 									new long[] { labelRegion.min(0), labelRegion.min(1) },
 									new long[] { labelRegion.max(0), labelRegion.max(1) });
 							if (Intervals.contains(interval2D, midOfPatch)) {
-								final TrainingObject<FloatType> tObj = new TrainingObject<>(Views.zeroMin(patch), 1,
+								final TrainingObject<FloatType> tObj = new TrainingObject<FloatType>(patch,
+										randomAccess, 1,
 										new int[] {
 												(int) (labelRegion.getCenterOfMass().getFloatPosition(0)
 														- midOfPatch.getFloatPosition(0)),
@@ -461,7 +469,7 @@ final class HoughForestLearnerNodeModel<T extends RealType<T>, L> extends NodeMo
 								continue;
 							}
 						}
-						final TrainingObject<FloatType> tObj = new TrainingObject<>(Views.zeroMin(patch), 0,
+						final TrainingObject<FloatType> tObj = new TrainingObject<>(patch, randomAccess, 0,
 								new int[] {}, trainingObjectGrid, pos, nodeGrid);
 						allTObjects.add(tObj);
 						trainingObjectGrid[i][j] = tObj;

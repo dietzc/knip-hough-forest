@@ -55,6 +55,7 @@ import org.knime.knip.hough.forest.node.LeafNode;
 import org.knime.knip.hough.forest.node.Node;
 import org.knime.knip.hough.forest.training.PatchObject;
 
+import net.imglib2.RandomAccess;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.type.numeric.RealType;
 
@@ -76,9 +77,9 @@ public final class PredictionObject<T extends RealType<T>> extends PatchObject<T
 	 * 
 	 * @param patch a {@link RandomAccessibleInterval}
 	 */
-	public PredictionObject(final RandomAccessibleInterval<T> patch, final int[] patchMid,
-			final PatchObject<T>[][] grid, final int[] position, final Node[][][] nodeGrid) {
-		super(patch, grid, position, nodeGrid);
+	public PredictionObject(final RandomAccessibleInterval<T> patch, final RandomAccess<T>[] randomAccess,
+			final int[] patchMid, final PatchObject<T>[][] grid, final int[] position, final Node[][][] nodeGrid) {
+		super(patch, randomAccess, grid, position, nodeGrid);
 		m_patchMid = patchMid;
 		m_predictions = new ArrayList<LeafNode>();
 	}

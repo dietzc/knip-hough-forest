@@ -94,9 +94,10 @@ public final class DefaultSplitFunction implements SplitFunction {
 	@Override
 	public <T extends RealType<T>> Split apply(final PatchObject<T> pObj, final int treeIdx, final int[] stride) {
 		final RandomAccess<T> raPatch = pObj.getRandomAccess(treeIdx);
-		raPatch.setPosition(m_indices[0]);
+		final int[] min = pObj.getMin();
+		raPatch.setPosition(new int[] { min[0] + m_indices[0][0], min[1] + m_indices[0][1], m_indices[0][2] });
 		final float value1 = raPatch.get().getRealFloat();
-		raPatch.setPosition(m_indices[1]);
+		raPatch.setPosition(new int[] { min[0] + m_indices[1][0], min[1] + m_indices[1][1], m_indices[1][2] });
 		final float value2 = raPatch.get().getRealFloat();
 		if (value1 - value2 < m_threshold)
 			return Split.LEFT;

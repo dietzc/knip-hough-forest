@@ -56,7 +56,6 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 
 import org.knime.core.data.DataCell;
@@ -103,7 +102,6 @@ import org.knime.knip.hough.features.FeatureDescriptor;
 import org.knime.knip.hough.forest.HoughForest;
 import org.knime.knip.hough.forest.node.Node;
 import org.knime.knip.hough.forest.prediction.PredictionObject;
-import org.knime.knip.hough.forest.prediction.Predictor;
 import org.knime.knip.hough.forest.prediction.PredictorEntangled;
 import org.knime.knip.hough.grid.Grid;
 import org.knime.knip.hough.grid.Grids;
@@ -399,6 +397,11 @@ final class HoughForestPredictorNodeModel<T extends RealType<T>> extends NodeMod
 							new NLinearInterpolatorFactory<T>());
 				}
 
+				final RandomAccess<FloatType>[] randomAccess = new RandomAccess[m_houghForest.getListOfTrees().size()];
+				for (int i = 0; i < randomAccess.length; i++) {
+					randomAccess[i] = scaledFeatureImage.randomAccess();
+				}
+
 				/*
 				 * === Patch Extraction ===
 				 */
@@ -421,7 +424,7 @@ final class HoughForestPredictorNodeModel<T extends RealType<T>> extends NodeMod
 						final RandomAccessibleInterval<FloatType> patch = raGrid.get();
 						final int[] patchMid = new int[] { (int) (patch.min(0) + (patch.dimension(0) / 2)),
 								(int) (patch.min(1) + (patch.dimension(1) / 2)) };
-						final PredictionObject<FloatType> pObj = new PredictionObject<FloatType>(Views.zeroMin(patch),
+						final PredictionObject<FloatType> pObj = new PredictionObject<FloatType>(patch, randomAccess,
 								patchMid, predictionObjectGrid, pos, nodeGrid);
 						listPredObjSc.add(pObj);
 						predictionObjectGrid[i][j] = pObj;
@@ -434,58 +437,9 @@ final class HoughForestPredictorNodeModel<T extends RealType<T>> extends NodeMod
 				 */
 				final RandomAccessibleInterval<FloatType> votesSc = m_ops.create()
 						.img(new FinalInterval(img.dimension(0), img.dimension(1)), new FloatType());
-				// Read test data and predict the votes
-				final class PredictParallel implements Callable<Void> {
-
-					private final List<PredictionObject<FloatType>> m_batchPredObj;
-					private final double m_scale;
-
-					public PredictParallel(final List<PredictionObject<FloatType>> batchPredObj, final double scale) {
-						m_batchPredObj = batchPredObj;
-						m_scale = scale;
-					}
-
-					@Override
-					public Void call() {
-						for (final PredictionObject<FloatType> predObj : m_batchPredObj) {
-							Predictor.predictForest(m_houghForest, predObj, votesSc.randomAccess(),
-									new FinalInterval(scaledFeatureImage.dimension(0), scaledFeatureImage.dimension(1)),
-									m_scale);
-						}
-						return null;
-					}
-
-				}
-				if (false) {
-					final List<PredictParallel> threads = new ArrayList<>();
-					final int sizeListPredObjSc = listPredObjSc.size();
-					final int batchSize = (int) (sizeListPredObjSc / Runtime.getRuntime().availableProcessors()) + 1;
-					int i = 0;
-					while (true) {
-						final int to = (i + 1) * batchSize;
-						final List<PredictionObject<FloatType>> subList;
-						if (to < sizeListPredObjSc) {
-							subList = listPredObjSc.subList(i * batchSize, to);
-							threads.add(new PredictParallel(subList, scales[scIdx]));
-							i++;
-						} else {
-							subList = listPredObjSc.subList(i * batchSize, sizeListPredObjSc);
-							threads.add(new PredictParallel(subList, scales[scIdx]));
-							break;
-						}
-					}
-					try {
-						m_es.invokeAll(threads);
-					} catch (final InterruptedException e) {
-						Thread.currentThread().interrupt();
-						throw new RuntimeException(e);
-					}
-					// entangled
-				} else {
-					PredictorEntangled.predictForest(m_houghForest, listPredObjSc, votesSc.randomAccess(),
-							new FinalInterval(scaledFeatureImage.dimension(0), scaledFeatureImage.dimension(1)),
-							scales[scIdx], m_config);
-				}
+				PredictorEntangled.predictForest(m_houghForest, listPredObjSc, votesSc.randomAccess(),
+						new FinalInterval(scaledFeatureImage.dimension(0), scaledFeatureImage.dimension(1)),
+						scales[scIdx], m_config);
 				votesAllSc.add(votesSc);
 
 				// Node[][] nodes = listPredObjSc.get(0).getNodeGrid()[0];
@@ -518,12 +472,10 @@ final class HoughForestPredictorNodeModel<T extends RealType<T>> extends NodeMod
 						new FloatType((float) m_config.getThresholdMultipleDetection()));
 				maxima = m_ops.create().img(votes, new BitType());
 				maximumFinderOp.compute((RandomAccessibleInterval<T>) votes, maxima);
-				// final Cursor<BitType> cursorMaxima = Views.flatIterable(maxima).cursor();
-				RandomAccess<BitType> randomAccess = maxima.randomAccess();
+				final RandomAccess<BitType> randomAccess = maxima.randomAccess();
 				@SuppressWarnings("rawtypes")
 				final Cursor<Void> cursorMaxima = Regions
 						.iterable((RandomAccessibleInterval<BooleanType>) thresholdedVotings).localizingCursor();
-				// Cursor<BitType> cursor = thresholdedVotings.cursor();
 				while (cursorMaxima.hasNext()) {
 					cursorMaxima.fwd();
 					randomAccess.setPosition(cursorMaxima);

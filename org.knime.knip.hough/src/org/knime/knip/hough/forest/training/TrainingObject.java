@@ -50,6 +50,7 @@ package org.knime.knip.hough.forest.training;
 
 import org.knime.knip.hough.forest.node.Node;
 
+import net.imglib2.RandomAccess;
 import net.imglib2.RandomAccessibleInterval;
 
 /**
@@ -68,9 +69,10 @@ public final class TrainingObject<T> extends PatchObject<T> {
 	 * @param clazz 0 or 1 (other numbers are mapped to 1)
 	 * @param offset a two dimensional offset vector
 	 */
-	public TrainingObject(final RandomAccessibleInterval<T> patch, final int clazz, final int[] offset,
-			TrainingObject<T>[][] grid, final int[] position, final Node[][][] nodeGrid) {
-		super(patch, grid, position, nodeGrid);
+	public TrainingObject(final RandomAccessibleInterval<T> patch, final RandomAccess<T>[] randomAccess,
+			final int clazz, final int[] offset, TrainingObject<T>[][] grid, final int[] position,
+			final Node[][][] nodeGrid) {
+		super(patch, randomAccess, grid, position, nodeGrid);
 		m_clazz = clazz == 0 ? 0 : 1;
 		m_offset = offset;
 	}
