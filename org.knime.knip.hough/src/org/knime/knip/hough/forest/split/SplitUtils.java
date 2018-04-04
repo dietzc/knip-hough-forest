@@ -103,7 +103,7 @@ public final class SplitUtils {
 		final SplitFunction[] splitFunctions = new SplitFunction[config.getNumSplitFunctions()];
 		final Random random = new Random(seed);
 		for (int i = 0; i < config.getNumSplitFunctions(); i++) {
-			if (depth < 1 || random.nextDouble() > config.getRatioEntanglement() || !config.getEntanglement()) {
+			if (depth < 2 || random.nextDouble() > config.getRatioEntanglement() || !config.getEntanglement()) {
 				splitFunctions[i] = DefaultSplitFunction.createRandom(sample.getElementsOfSample().get(0), config,
 						random);
 			} else {
@@ -125,6 +125,9 @@ public final class SplitUtils {
 						splitFunctions[i] = AncestorNodePairSplitFunction.createRandom(config, depth, random);
 					} else if (sf == HoughForestLearnerConfig.OFFSET_SIMILARITY_NODE_PAIR_SF) {
 						splitFunctions[i] = OffsetSimilarityNodePairSplitFunction.createRandom(config, random);
+					} else if (sf == HoughForestLearnerConfig.ENTANGLED_DEFAULT_SF) {
+						splitFunctions[i] = EntangledDefaultSplitFunction
+								.createRandom(sample.getElementsOfSample().get(0), config, random);
 					} else {
 						throw new IllegalStateException("Unknow split function: '" + sf + "'");
 					}

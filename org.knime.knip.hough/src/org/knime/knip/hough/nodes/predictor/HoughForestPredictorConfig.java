@@ -55,11 +55,11 @@ public final class HoughForestPredictorConfig {
 	}
 
 	static SettingsModelIntegerBounded createPatchGapXModel() {
-		return new SettingsModelIntegerBounded("gap_horizontal", 8, 0, Integer.MAX_VALUE);
+		return new SettingsModelIntegerBounded("gap_horizontal", 8, 1, Integer.MAX_VALUE);
 	}
 
 	static SettingsModelIntegerBounded createPatchGapYModel() {
-		return new SettingsModelIntegerBounded("gap_vertical", 8, 0, Integer.MAX_VALUE);
+		return new SettingsModelIntegerBounded("gap_vertical", 8, 1, Integer.MAX_VALUE);
 	}
 
 	static SettingsModelDoubleBounded createSigmaXYModel() {

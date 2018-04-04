@@ -82,9 +82,9 @@ final class HoughForestLearnerNodeDialog extends DefaultNodeSettingsPane {
 
 		createNewGroup("Tree Options");
 		addDialogComponent(new DialogComponentNumber(HoughForestLearnerConfig.createNumSamplesModel(),
-				"Size of sample per tree", 1));
+				"Size of sample per tree", 1000));
 		addDialogComponent(new DialogComponentNumber(HoughForestLearnerConfig.createNumSplitFunctionsModel(),
-				"Number of split functions", 1));
+				"Number of split functions", 1000));
 		addDialogComponent(
 				new DialogComponentNumber(HoughForestLearnerConfig.createDepthModel(), "Max. tree depth", 1));
 		addDialogComponent(new DialogComponentNumber(HoughForestLearnerConfig.createMinSizeSampleModel(),

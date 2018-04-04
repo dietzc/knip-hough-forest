@@ -1,4 +1,8 @@
 code:
+- output filtered votes (scales)
+- bb too big
+
+
 - revise scaling
 - oob strategy split functions
 
@@ -6,8 +10,3 @@ code:
 - output magnitude and direction of votes
 
 - investigate weighting of votes of different scales
-- lazy patch extraction?
-
-entanglement:
-- prob. distr. for feature selection during training (-> 2nd training needed) -> depends on tree level
-- prob. distr. for feature parameters

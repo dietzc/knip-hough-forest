@@ -48,7 +48,6 @@
  */
 package org.knime.knip.hough.forest.prediction;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -120,6 +119,7 @@ public final class PredictorEntangled {
 	public static <T extends RealType<T>> void predictForest(final HoughForest forest,
 			final List<PredictionObject<T>> predObjects, final RandomAccess<FloatType> raVotes,
 			final FinalInterval scaledInterval, final double scale, final HoughForestPredictorConfig config) {
+		final double numTreesWeight = 1.0 / forest.getListOfTrees().size();
 		for (int i = 0; i < forest.getListOfTrees().size(); i++) {
 			final SplitNode root = forest.getListOfTrees().get(i);
 			setNodeGrid(i, predObjects, root);
@@ -140,14 +140,12 @@ public final class PredictorEntangled {
 						final int patchY = predObj.getPatchMid()[1];
 						final int[] pos = new int[] { patchX + offset[0], patchY + offset[1] };
 						if (contains2D(scaledInterval, pos)) {
-							double angle = getAngle(offset[0], offset[1]);
-							double magnitude = getMagnitude(offset[0], offset[1]);
-
 							raVotes.setPosition((int) (pos[0] / scale), 0);
 							raVotes.setPosition((int) (pos[1] / scale), 1);
-							raVotes.get().setReal(
-									raVotes.get().getRealDouble() + (1.0 / scale) * (predictedLeafNode.getProbability(1)
-											/ predictedLeafNode.getNumElementsOfClazz1())); // TODO
+							raVotes.get()
+									.setReal(raVotes.get().getRealDouble()
+											+ numTreesWeight * ((1.0 / scale) * (predictedLeafNode.getProbability(1)
+													/ predictedLeafNode.getNumElementsOfClazz1()))); // TODO
 							// check
 							// if
 							// scale
@@ -198,9 +196,9 @@ public final class PredictorEntangled {
 	 * @param scale scale
 	 * @return list of vertices
 	 */
-	public static <T extends RealType<T>> List<Localizable> getVertices(final PredictionObject<T> predObject,
+	public static <T extends RealType<T>> Map<Localizable, Integer> getVertices(final PredictionObject<T> predObject,
 			final FinalInterval scaledMaxInterval, final double scale) {
-		final List<Localizable> vertices = new ArrayList<>();
+		final Map<Localizable, Integer> vertices = new HashMap<>();
 		int counter = 0;
 		final int patchX = predObject.getPatchMid()[0];
 		final int patchY = predObject.getPatchMid()[1];
@@ -218,7 +216,7 @@ public final class PredictorEntangled {
 		// only add the patch mid point to vertices, if it satisfies the criteria more
 		// than 5 times
 		if (counter > 5) {
-			vertices.add(new Point((int) (patchX / scale), (int) (patchY / scale)));
+			vertices.put(new Point((int) (patchX / scale), (int) (patchY / scale)), counter);
 		}
 		return vertices;
 	}

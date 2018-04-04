@@ -71,6 +71,8 @@ public final class HoughForestLearnerConfig {
 	private final SettingsModelDoubleBounded m_offsetSimilarityNodePairSigma = createOffsetSimilarityNodePairSigmaModel(
 			m_useOffsetSimiliarityNodePairSplitFunction);
 
+	public static final String ENTANGLED_DEFAULT_SF = "use_entangled_default";
+
 	private final SettingsModel[] m_listSettingsModels = { m_colImage, m_colLabel, m_numSamples, m_numSplitFunctions,
 			m_depth, m_minSizeSample, m_numTrees, m_useSeed, m_seed, m_convertToLab, m_firstDerivative,
 			m_useAbsoluteFirstDerivative, m_secondDerivative, m_useAbsoluteSecondDerivative, m_hog, m_hogNumBins,
@@ -157,19 +159,19 @@ public final class HoughForestLearnerConfig {
 	}
 
 	static SettingsModelIntegerBounded createPatchGapXModel() {
-		return new SettingsModelIntegerBounded("gap_horizontal", 8, 0, Integer.MAX_VALUE);
+		return new SettingsModelIntegerBounded("gap_horizontal", 4, 1, Integer.MAX_VALUE);
 	}
 
 	static SettingsModelIntegerBounded createPatchGapYModel() {
-		return new SettingsModelIntegerBounded("gap_vertical", 8, 0, Integer.MAX_VALUE);
+		return new SettingsModelIntegerBounded("gap_vertical", 4, 1, Integer.MAX_VALUE);
 	}
 
 	static SettingsModelIntegerBounded createPatchWidthModel() {
-		return new SettingsModelIntegerBounded("patch_width", 16, 1, Integer.MAX_VALUE);
+		return new SettingsModelIntegerBounded("patch_width", 16, 2, Integer.MAX_VALUE);
 	}
 
 	static SettingsModelIntegerBounded createPatchHeightModel() {
-		return new SettingsModelIntegerBounded("patch_height", 16, 1, Integer.MAX_VALUE);
+		return new SettingsModelIntegerBounded("patch_height", 16, 2, Integer.MAX_VALUE);
 	}
 
 	static SettingsModelBoolean createEntanglementModel() {
@@ -494,6 +496,7 @@ public final class HoughForestLearnerConfig {
 		if (getUseOffsetSimilarityNodePairSplitFunction()) {
 			list.add(OFFSET_SIMILARITY_NODE_PAIR_SF);
 		}
+		// list.add(ENTANGLED_DEFAULT_SF);
 		return list;
 	}
 

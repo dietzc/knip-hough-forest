@@ -51,83 +51,76 @@ package org.knime.knip.hough.forest.split;
 import java.util.Arrays;
 import java.util.Random;
 
-import org.knime.knip.hough.forest.node.Node;
 import org.knime.knip.hough.forest.training.PatchObject;
+import org.knime.knip.hough.forest.training.TrainingObject;
 import org.knime.knip.hough.nodes.learner.HoughForestLearnerConfig;
 
+import net.imglib2.RandomAccess;
 import net.imglib2.type.numeric.RealType;
 
 /**
- * TODO doc Holds parameters of a split function of a Hough tree.
+ * Holds parameters of a split function of a Hough tree.
  * 
  * @author Simon Schmid, University of Konstanz
  */
-public final class OffsetSimilarityNodePairSplitFunction extends EntangledSplitFunction {
+public final class EntangledDefaultSplitFunction extends EntangledSplitFunction {
 
 	private static final long serialVersionUID = 1L;
 
-	protected final int[] m_offset1;
-	protected final int[] m_offset2;
+	private final int[] m_offset;
+	private final int[][] m_indices;
 	private final double m_threshold;
-	private final double m_sigma;
 
 	/**
-	 * Creates a new {@link OffsetSimilarityNodePairSplitFunction}.
+	 * Creates a new {@link EntangledDefaultSplitFunction}.
 	 * 
 	 * @param indices the indices
 	 * @param threshold the threshold
 	 */
-	public OffsetSimilarityNodePairSplitFunction(final int[] offset1, final int[] offset2, final double threshold,
-			final int[] stride, final double sigma) {
+	public EntangledDefaultSplitFunction(final int[][] indices, final double threshold, final int[] offset,
+			final int[] stride) {
 		super(stride);
-		m_offset1 = offset1;
-		m_offset2 = offset2;
+		m_offset = offset;
+		m_indices = indices;
 		m_threshold = threshold;
-		m_sigma = sigma;
+	}
+
+	public static <T extends RealType<T>> EntangledDefaultSplitFunction createRandom(final TrainingObject<?> sample,
+			final HoughForestLearnerConfig config, Random random) {
+		final int channel = random.nextInt(sample.getNumFeatures());
+		return new EntangledDefaultSplitFunction(
+				new int[][] {
+						{ random.nextInt(config.getPatchWidth()), random.nextInt(config.getPatchHeight()), channel },
+						{ random.nextInt(config.getPatchWidth()), random.nextInt(config.getPatchHeight()), channel } },
+				random.nextDouble() * config.getThresholds()[channel], config.createRandomOffset(random),
+				new int[] { config.getPatchGapX(), config.getPatchGapY() });
 	}
 
 	@Override
 	public <T extends RealType<T>> Split apply(final PatchObject<T> pObj, final int treeIdx, final int[] stride) {
 		final int[] position = pObj.getPosition();
-		final int[] position_probe1 = getPos(position, m_offset1, stride);
-		final int[] position_probe2 = getPos(position, m_offset2, stride);
-		if (pObj.isPosInGridInterval(position_probe1) && pObj.isPosInGridInterval(position_probe2)) {
-			Node node1 = pObj.getNodeGrid()[treeIdx][position_probe1[0]][position_probe1[1]];
-			Node node2 = pObj.getNodeGrid()[treeIdx][position_probe2[0]][position_probe2[1]];
-			if (node1.getProbability(0) > 0.5 || node2.getProbability(0) > 0.5) {
+		final int[] position_probe = getPos(position, m_offset, stride);
+		if (pObj.isPosInGridInterval(position_probe)) {
+			@SuppressWarnings("unchecked")
+			final PatchObject<T> pObjProbe = pObj.getGrid()[position_probe[0]][position_probe[1]];
+			final RandomAccess<T> raPatch = pObjProbe.getRandomAccess(treeIdx);
+			final int[] min = pObjProbe.getMin();
+			raPatch.setPosition(new int[] { min[0] + m_indices[0][0], min[1] + m_indices[0][1], m_indices[0][2] });
+			final float value1 = raPatch.get().getRealFloat();
+			raPatch.setPosition(new int[] { min[0] + m_indices[1][0], min[1] + m_indices[1][1], m_indices[1][2] });
+			final float value2 = raPatch.get().getRealFloat();
+			if (value1 - value2 < m_threshold)
 				return Split.LEFT;
-			}
-			final double[] d1 = node1.getOffsetMean();
-			final double[] d2 = node2.getOffsetMean();
-			double v = 0;
-			for (int i = 0; i < d1.length; i++) {
-				final double diff = d1[i] - d2[i];
-				v += diff * diff;
-			}
-			v /= m_sigma * m_sigma;
-			double exp = Math.exp(0 - v);
-			if (exp < m_threshold) {
-				return Split.LEFT;
-			}
-		} else {
-			// TODO how to handle?
 		}
 		return Split.RIGHT;
-	}
-
-	public static OffsetSimilarityNodePairSplitFunction createRandom(final HoughForestLearnerConfig config,
-			final Random random) {
-		return new OffsetSimilarityNodePairSplitFunction(config.createRandomOffset(random),
-				config.createRandomOffset(random), random.nextDouble(), config.getStride(),
-				config.getOffsetSimilarityNodePairSigma());
 	}
 
 	@Override
 	public int hashCode() {
 		final int prime = 31;
 		int result = super.hashCode();
-		result = prime * result + Arrays.hashCode(m_offset1);
-		result = prime * result + Arrays.hashCode(m_offset2);
+		result = prime * result + Arrays.deepHashCode(m_indices);
+		result = prime * result + Arrays.hashCode(m_offset);
 		long temp;
 		temp = Double.doubleToLongBits(m_threshold);
 		result = prime * result + (int) (temp ^ (temp >>> 32));
@@ -142,10 +135,10 @@ public final class OffsetSimilarityNodePairSplitFunction extends EntangledSplitF
 			return false;
 		if (getClass() != obj.getClass())
 			return false;
-		OffsetSimilarityNodePairSplitFunction other = (OffsetSimilarityNodePairSplitFunction) obj;
-		if (!Arrays.equals(m_offset1, other.m_offset1))
+		EntangledDefaultSplitFunction other = (EntangledDefaultSplitFunction) obj;
+		if (!Arrays.deepEquals(m_indices, other.m_indices))
 			return false;
-		if (!Arrays.equals(m_offset2, other.m_offset2))
+		if (!Arrays.equals(m_offset, other.m_offset))
 			return false;
 		if (Double.doubleToLongBits(m_threshold) != Double.doubleToLongBits(other.m_threshold))
 			return false;
@@ -154,7 +147,7 @@ public final class OffsetSimilarityNodePairSplitFunction extends EntangledSplitF
 
 	@Override
 	public String getName() {
-		return "Offset";
+		return "EntangledDefault";
 	}
 
 }

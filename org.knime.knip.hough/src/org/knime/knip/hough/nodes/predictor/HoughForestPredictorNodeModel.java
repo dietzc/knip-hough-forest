@@ -56,6 +56,7 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 
 import org.knime.core.data.DataCell;
@@ -117,6 +118,7 @@ import net.imglib2.IterableInterval;
 import net.imglib2.Localizable;
 import net.imglib2.RandomAccess;
 import net.imglib2.RandomAccessibleInterval;
+import net.imglib2.img.Img;
 import net.imglib2.img.ImgView;
 import net.imglib2.img.array.ArrayImgFactory;
 import net.imglib2.interpolation.randomaccess.NLinearInterpolatorFactory;
@@ -455,10 +457,19 @@ final class HoughForestPredictorNodeModel<T extends RealType<T>> extends NodeMod
 			}
 
 			// Blur votes
-			final RandomAccessibleInterval<FloatType> votes = m_ops.filter().convolve(Views.stack(votesAllSc),
-					(RandomAccessibleInterval<T>) m_ops.create().kernelGauss(m_config.getSigmaXY(),
-							m_config.getSigmaXY(), m_config.getSigmaZ()));
-
+			final RandomAccessibleInterval<FloatType> votes;
+			if (votesAllSc.size() > 1) {
+				votes = m_ops.filter().convolve(Views.stack(votesAllSc), (RandomAccessibleInterval<T>) m_ops.create()
+						.kernelGauss(m_config.getSigmaXY(), m_config.getSigmaXY(), m_config.getSigmaZ())); // TODO
+																											// filtering
+																											// in z
+																											// seems to
+																											// be
+																											// incorrect
+			} else {
+				votes = m_ops.filter().convolve(votesAllSc.get(0), (RandomAccessibleInterval<T>) m_ops.create()
+						.kernelGauss(m_config.getSigmaXY(), m_config.getSigmaXY()));
+			}
 			/*
 			 * === Bounding Box Estimation ===
 			 */
@@ -487,6 +498,7 @@ final class HoughForestPredictorNodeModel<T extends RealType<T>> extends NodeMod
 				}
 			} else {
 				maxima = m_ops.create().img(votes, new BitType());
+				final RandomAccess<BitType> raMax = maxima.randomAccess();
 				final int[] maxVotesPos = new int[votes.numDimensions()];
 				final Cursor<FloatType> cursor = Views.iterable(votes).cursor();
 				float tmpMax = Integer.MIN_VALUE;
@@ -499,6 +511,8 @@ final class HoughForestPredictorNodeModel<T extends RealType<T>> extends NodeMod
 					}
 				}
 				maxVotesPositions.add(maxVotesPos);
+				raMax.setPosition(maxVotesPos);
+				raMax.get().set(true);
 			}
 
 			/*
@@ -508,6 +522,10 @@ final class HoughForestPredictorNodeModel<T extends RealType<T>> extends NodeMod
 			final ImgLabeling<String, IntType> labelings = m_ops.create()
 					.imgLabeling(new FinalInterval(img.dimension(0), img.dimension(1)));
 			final RandomAccess<LabelingType<String>> raLabeling = labelings.randomAccess();
+
+			final Img<IntType> verticesImage = m_ops.create().img(new FinalInterval(img.dimension(0), img.dimension(1)),
+					new IntType());
+			final RandomAccess<IntType> raVerticesImage = verticesImage.randomAccess();
 
 			// Draw every found object
 			final int sizeBackprojection = m_config.getSpanIntervalBackprojection();
@@ -529,7 +547,13 @@ final class HoughForestPredictorNodeModel<T extends RealType<T>> extends NodeMod
 					// Get all the patches which vote inside the
 					// scaledIntervalOfMaxVotes
 					for (final PredictionObject<FloatType> predObj : listPredObjAllSc.get(i)) {
-						vertices.addAll(PredictorEntangled.getVertices(predObj, scaledIntervalOfMaxVotes, scales[i]));
+						final Map<Localizable, Integer> mapVertices = PredictorEntangled.getVertices(predObj,
+								scaledIntervalOfMaxVotes, scales[i]);
+						vertices.addAll(mapVertices.keySet());
+						for (Localizable e : mapVertices.keySet()) {
+							raVerticesImage.setPosition(e);
+							raVerticesImage.get().set(raVerticesImage.get().get() + mapVertices.get(e));
+						}
 					}
 				}
 
@@ -539,6 +563,7 @@ final class HoughForestPredictorNodeModel<T extends RealType<T>> extends NodeMod
 				if (vertices.isEmpty()) {
 					predictionSuccessful = false;
 				} else {
+					// final Polygon2D boundingBox = new DefaultWritablePolygon2D(vertices);
 					final Polygon boundingBox = new Polygon(vertices);
 					for (int i = (int) boundingBox.realMin(0); i <= boundingBox.realMax(0); i++) {
 						for (int j = (int) boundingBox.realMin(1); j <= boundingBox.realMax(1); j++) {
@@ -556,7 +581,7 @@ final class HoughForestPredictorNodeModel<T extends RealType<T>> extends NodeMod
 							for (int j = maxVotesPos[1] - sizeBackprojection; j <= maxVotesPos[1]
 									+ sizeBackprojection; j++) {
 								raLabeling.setPosition(new int[] { i, j });
-								raLabeling.get().add("MaxInterval");
+								raLabeling.get().add("MaxInterval" + count);
 							}
 						}
 
@@ -565,7 +590,7 @@ final class HoughForestPredictorNodeModel<T extends RealType<T>> extends NodeMod
 						 */
 						for (final Localizable vertix : vertices) {
 							raLabeling.setPosition(vertix);
-							raLabeling.get().add("Vertix");
+							raLabeling.get().add("Vertix" + count);
 						}
 					}
 				}
@@ -598,7 +623,7 @@ final class HoughForestPredictorNodeModel<T extends RealType<T>> extends NodeMod
 				}
 				if (m_config.getOutputNodeIdx()) {
 					cells.add(m_imageCellFac
-							.createCell(new ImgPlus<>(ImgView.wrap(nodeIdxImage, new ArrayImgFactory<IntType>()))));
+							.createCell(new ImgPlus<>(ImgView.wrap(verticesImage, new ArrayImgFactory<IntType>()))));
 				}
 				// if (m_config.getOutputNodeIdx()) {
 				// cells.add(m_imageCellFac

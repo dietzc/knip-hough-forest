@@ -448,6 +448,9 @@ final class HoughForestLearnerNodeModel<T extends RealType<T>, L> extends NodeMo
 						final RandomAccessibleInterval<FloatType> patch = raGrid.get();
 						final Point midOfPatch = new Point(patch.min(0) + patch.dimension(0) / 2,
 								patch.min(1) + patch.dimension(1) / 2);
+						if ((midOfPatch.getIntPosition(0) == 59) && (midOfPatch.getIntPosition(1) == 38)) {
+							System.out.println("");
+						}
 						if (numLabels > 0) {
 							final LabelRegion<L> labelRegion = labelRegions
 									.getLabelRegion(labelRegions.getExistingLabels().iterator().next());
