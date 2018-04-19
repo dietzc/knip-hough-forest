@@ -125,6 +125,9 @@ public final class SplitUtils {
 						splitFunctions[i] = AncestorNodePairSplitFunction.createRandom(config, depth, random);
 					} else if (sf == HoughForestLearnerConfig.OFFSET_SIMILARITY_NODE_PAIR_SF) {
 						splitFunctions[i] = OffsetSimilarityNodePairSplitFunction.createRandom(config, random);
+					} else if (sf == HoughForestLearnerConfig.ENTANGLED_DEFAULT_SF) {
+						splitFunctions[i] = EntangledDefaultSplitFunction
+								.createRandom(sample.getElementsOfSample().get(0), config, random);
 					} else {
 						throw new IllegalStateException("Unknow split function: '" + sf + "'");
 					}

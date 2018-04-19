@@ -91,16 +91,17 @@ public abstract class Node implements Serializable {
 
 	private double[] offsetMean(final List<int[]> offsets) {
 		final double[] offsetMean = new double[] { 0, 0 };
-		if (offsets.size() == 0) {
-			return offsetMean;
+		if (offsets != null) {
+			if (offsets.size() == 0) {
+				return offsetMean;
+			}
+			for (final int[] o : offsets) {
+				offsetMean[0] += o[0];
+				offsetMean[1] += o[1];
+			}
+			offsetMean[0] /= offsets.size();
+			offsetMean[1] /= offsets.size();
 		}
-		for (final int[] o : offsets) {
-			offsetMean[0] += o[0];
-			offsetMean[1] += o[1];
-		}
-		offsetMean[0] /= offsets.size();
-		offsetMean[1] /= offsets.size();
-
 		return offsetMean;
 	}
 
