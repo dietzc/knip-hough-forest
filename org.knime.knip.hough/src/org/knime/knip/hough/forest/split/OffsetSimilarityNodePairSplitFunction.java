@@ -111,7 +111,6 @@ public final class OffsetSimilarityNodePairSplitFunction extends EntangledSplitF
 			}
 		} else {
 			// TODO how to handle?
-			return Split.LEFT;
 		}
 		return Split.RIGHT;
 	}
