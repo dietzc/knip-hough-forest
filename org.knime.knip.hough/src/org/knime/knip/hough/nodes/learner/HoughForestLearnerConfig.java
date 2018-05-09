@@ -159,19 +159,19 @@ public final class HoughForestLearnerConfig {
 	}
 
 	static SettingsModelIntegerBounded createPatchGapXModel() {
-		return new SettingsModelIntegerBounded("gap_horizontal", 8, 0, Integer.MAX_VALUE);
+		return new SettingsModelIntegerBounded("gap_horizontal", 4, 1, Integer.MAX_VALUE);
 	}
 
 	static SettingsModelIntegerBounded createPatchGapYModel() {
-		return new SettingsModelIntegerBounded("gap_vertical", 8, 0, Integer.MAX_VALUE);
+		return new SettingsModelIntegerBounded("gap_vertical", 4, 1, Integer.MAX_VALUE);
 	}
 
 	static SettingsModelIntegerBounded createPatchWidthModel() {
-		return new SettingsModelIntegerBounded("patch_width", 16, 1, Integer.MAX_VALUE);
+		return new SettingsModelIntegerBounded("patch_width", 16, 2, Integer.MAX_VALUE);
 	}
 
 	static SettingsModelIntegerBounded createPatchHeightModel() {
-		return new SettingsModelIntegerBounded("patch_height", 16, 1, Integer.MAX_VALUE);
+		return new SettingsModelIntegerBounded("patch_height", 16, 2, Integer.MAX_VALUE);
 	}
 
 	static SettingsModelBoolean createEntanglementModel() {
