@@ -103,7 +103,7 @@ public final class SplitUtils {
 		final SplitFunction[] splitFunctions = new SplitFunction[config.getNumSplitFunctions()];
 		final Random random = new Random(seed);
 		for (int i = 0; i < config.getNumSplitFunctions(); i++) {
-			if (depth < 1 || random.nextDouble() > config.getRatioEntanglement() || !config.getEntanglement()) {
+			if (depth < 2 || random.nextDouble() > config.getRatioEntanglement() || !config.getEntanglement()) {
 				splitFunctions[i] = DefaultSplitFunction.createRandom(sample.getElementsOfSample().get(0), config,
 						random);
 			} else {
