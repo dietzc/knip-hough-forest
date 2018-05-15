@@ -457,7 +457,7 @@ final class HoughForestPredictorNodeModel<T extends RealType<T>> extends NodeMod
 			// Blur votes
 			final RandomAccessibleInterval<FloatType> votes = m_ops.filter().convolve(Views.stack(votesAllSc),
 					(RandomAccessibleInterval<T>) m_ops.create().kernelGauss(m_config.getSigmaXY(),
-							m_config.getSigmaXY(), m_config.getSigmaZ()));
+							m_config.getSigmaXY(), m_config.getSigmaZ())); // TODO filtering in z seems to be incorrect
 
 			/*
 			 * === Bounding Box Estimation ===
