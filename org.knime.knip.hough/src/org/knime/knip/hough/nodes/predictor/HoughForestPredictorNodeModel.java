@@ -487,6 +487,7 @@ final class HoughForestPredictorNodeModel<T extends RealType<T>> extends NodeMod
 				}
 			} else {
 				maxima = m_ops.create().img(votes, new BitType());
+				final RandomAccess<BitType> raMax = maxima.randomAccess();
 				final int[] maxVotesPos = new int[votes.numDimensions()];
 				final Cursor<FloatType> cursor = Views.iterable(votes).cursor();
 				float tmpMax = Integer.MIN_VALUE;
@@ -499,6 +500,8 @@ final class HoughForestPredictorNodeModel<T extends RealType<T>> extends NodeMod
 					}
 				}
 				maxVotesPositions.add(maxVotesPos);
+				raMax.setPosition(maxVotesPos);
+				raMax.get().set(true);
 			}
 
 			/*
@@ -556,7 +559,7 @@ final class HoughForestPredictorNodeModel<T extends RealType<T>> extends NodeMod
 							for (int j = maxVotesPos[1] - sizeBackprojection; j <= maxVotesPos[1]
 									+ sizeBackprojection; j++) {
 								raLabeling.setPosition(new int[] { i, j });
-								raLabeling.get().add("MaxInterval");
+								raLabeling.get().add("MaxInterval" + count);
 							}
 						}
 
@@ -565,7 +568,7 @@ final class HoughForestPredictorNodeModel<T extends RealType<T>> extends NodeMod
 						 */
 						for (final Localizable vertix : vertices) {
 							raLabeling.setPosition(vertix);
-							raLabeling.get().add("Vertix");
+							raLabeling.get().add("Vertix" + count);
 						}
 					}
 				}

@@ -120,6 +120,7 @@ public final class PredictorEntangled {
 	public static <T extends RealType<T>> void predictForest(final HoughForest forest,
 			final List<PredictionObject<T>> predObjects, final RandomAccess<FloatType> raVotes,
 			final FinalInterval scaledInterval, final double scale, final HoughForestPredictorConfig config) {
+		final double numTreesWeight = 1.0 / forest.getListOfTrees().size();
 		for (int i = 0; i < forest.getListOfTrees().size(); i++) {
 			final SplitNode root = forest.getListOfTrees().get(i);
 			setNodeGrid(i, predObjects, root);
@@ -140,14 +141,15 @@ public final class PredictorEntangled {
 						final int patchY = predObj.getPatchMid()[1];
 						final int[] pos = new int[] { patchX + offset[0], patchY + offset[1] };
 						if (contains2D(scaledInterval, pos)) {
-							double angle = getAngle(offset[0], offset[1]);
-							double magnitude = getMagnitude(offset[0], offset[1]);
-
+							// double angle = getAngle(offset[0], offset[1]);
+							// double magnitude = getMagnitude(offset[0], offset[1]);
+							// TODO
 							raVotes.setPosition((int) (pos[0] / scale), 0);
 							raVotes.setPosition((int) (pos[1] / scale), 1);
-							raVotes.get().setReal(
-									raVotes.get().getRealDouble() + (1.0 / scale) * (predictedLeafNode.getProbability(1)
-											/ predictedLeafNode.getNumElementsOfClazz1())); // TODO
+							raVotes.get()
+									.setReal(raVotes.get().getRealDouble()
+											+ numTreesWeight * ((1.0 / scale) * (predictedLeafNode.getProbability(1)
+													/ predictedLeafNode.getNumElementsOfClazz1()))); // TODO
 							// check
 							// if
 							// scale
