@@ -455,10 +455,19 @@ final class HoughForestPredictorNodeModel<T extends RealType<T>> extends NodeMod
 			}
 
 			// Blur votes
-			final RandomAccessibleInterval<FloatType> votes = m_ops.filter().convolve(Views.stack(votesAllSc),
-					(RandomAccessibleInterval<T>) m_ops.create().kernelGauss(m_config.getSigmaXY(),
-							m_config.getSigmaXY(), m_config.getSigmaZ())); // TODO filtering in z seems to be incorrect
-
+			final RandomAccessibleInterval<FloatType> votes;
+			if (votesAllSc.size() > 1) {
+				votes = m_ops.filter().convolve(Views.stack(votesAllSc), (RandomAccessibleInterval<T>) m_ops.create()
+						.kernelGauss(m_config.getSigmaXY(), m_config.getSigmaXY(), m_config.getSigmaZ())); // TODO
+																											// filtering
+																											// in z
+																											// seems to
+																											// be
+																											// incorrect
+			} else {
+				votes = m_ops.filter().convolve(votesAllSc.get(0), (RandomAccessibleInterval<T>) m_ops.create()
+						.kernelGauss(m_config.getSigmaXY(), m_config.getSigmaXY()));
+			}
 			/*
 			 * === Bounding Box Estimation ===
 			 */
