@@ -1,13 +1,18 @@
 package org.knime.knip.hough.nodes.evaluator;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.IntStream;
 
 import org.knime.core.node.NodeLogger;
+import org.knime.knip.hough.forest.HoughForest;
 import org.knime.knip.hough.forest.node.LeafNode;
 import org.knime.knip.hough.forest.node.Node;
 import org.knime.knip.hough.forest.node.SplitNode;
 import org.knime.knip.hough.forest.split.AncestorNodePairSplitFunction;
+import org.knime.knip.hough.forest.split.DefaultSplitFunction;
 import org.knime.knip.hough.forest.split.MAPClassSplitFunction;
 import org.knime.knip.hough.forest.split.NodeDescendantSplitFunction;
 import org.knime.knip.hough.forest.split.SplitFunction;
@@ -78,6 +83,51 @@ public final class HoughForestEvaluator {
 					+ String.format("; [%3.2f, %3.2f]", node.getOffsetMean()[0], node.getOffsetMean()[1]);
 			System.out.println(print);
 			LOGGER.info(print);
+		}
+	}
+
+	public static List<int[]> getForestStatisctis(final HoughForest forest) {
+		final List<int[]> list = new ArrayList<>();
+		for (final SplitNode tree : forest.getListOfTrees()) {
+			countSplitFunctions(tree, list, 0);
+		}
+
+		// print
+
+		int depth = 0;
+		for (final int[] e : list) {
+			final int sum = IntStream.of(e).sum();
+			final String print = String.format("%2d & %4.1f & %4.1f & %4.1f & %4.1f\\\\ \\hline", depth,
+					((float) e[0] * 100) / sum, ((float) e[1] * 100) / sum, ((float) e[2] * 100) / sum,
+					((float) e[3] * 100) / sum);
+			System.out.println(print);
+			LOGGER.info(print);
+			depth++;
+		}
+
+		return list;
+	}
+
+	private static void countSplitFunctions(final Node node, final List<int[]> list, final int depth) {
+		if (node instanceof SplitNode) {
+			if (list.size() <= depth) {
+				list.add(depth, new int[5]);
+			}
+			final SplitNode sn = (SplitNode) node;
+			final SplitFunction splitFunction = ((SplitNode) node).getSplitFunction();
+			if (splitFunction instanceof DefaultSplitFunction) {
+				list.get(depth)[0] += 1;
+			} else if (splitFunction instanceof MAPClassSplitFunction) {
+				list.get(depth)[1] += 1;
+			} else if (splitFunction instanceof NodeDescendantSplitFunction) {
+				list.get(depth)[2] += 1;
+			} else if (splitFunction instanceof AncestorNodePairSplitFunction) {
+				list.get(depth)[3] += 1;
+			} else {
+				list.get(depth)[4] += 1;
+			}
+			countSplitFunctions(sn.getLeftChild(), list, depth + 1);
+			countSplitFunctions(sn.getRightChild(), list, depth + 1);
 		}
 	}
 }

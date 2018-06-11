@@ -51,7 +51,6 @@ package org.knime.knip.hough.nodes.evaluator;
 import java.io.File;
 import java.io.IOException;
 
-import org.knime.core.node.BufferedDataTable;
 import org.knime.core.node.CanceledExecutionException;
 import org.knime.core.node.ExecutionContext;
 import org.knime.core.node.ExecutionMonitor;
@@ -78,17 +77,19 @@ final class HoughForestEvaluatorNodeModel<T extends RealType<T>, L> extends Node
 	 * Table in, model out.
 	 */
 	public HoughForestEvaluatorNodeModel() {
-		super(new PortType[] { HoughForestModelPortObject.TYPE }, new PortType[] {  });
+		super(new PortType[] { HoughForestModelPortObject.TYPE }, new PortType[] {});
 	}
 
 	@Override
 	protected PortObjectSpec[] configure(PortObjectSpec[] inSpecs) throws InvalidSettingsException {
 		return null;
 	}
+
 	@Override
 	protected PortObject[] execute(PortObject[] inObjects, ExecutionContext exec) throws Exception {
 		HoughForest houghForest = ((HoughForestModelPortObject) inObjects[0]).getForest();
 		HoughForestEvaluator.printTree(houghForest.getListOfTrees().get(0), "", true);
+		HoughForestEvaluator.getForestStatisctis(houghForest);
 		return null;
 	}
 
