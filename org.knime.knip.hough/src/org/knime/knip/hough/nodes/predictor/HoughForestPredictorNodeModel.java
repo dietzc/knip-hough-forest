@@ -123,7 +123,8 @@ import net.imglib2.img.ImgView;
 import net.imglib2.img.array.ArrayImgFactory;
 import net.imglib2.interpolation.randomaccess.NLinearInterpolatorFactory;
 import net.imglib2.roi.Regions;
-import net.imglib2.roi.geometric.Polygon;
+import net.imglib2.roi.geom.real.DefaultWritablePolygon2D;
+import net.imglib2.roi.geom.real.Polygon2D;
 import net.imglib2.roi.labeling.ImgLabeling;
 import net.imglib2.roi.labeling.LabelingType;
 import net.imglib2.type.BooleanType;
@@ -563,8 +564,8 @@ final class HoughForestPredictorNodeModel<T extends RealType<T>> extends NodeMod
 				if (vertices.isEmpty()) {
 					predictionSuccessful = false;
 				} else {
-					// final Polygon2D boundingBox = new DefaultWritablePolygon2D(vertices);
-					final Polygon boundingBox = new Polygon(vertices);
+					final Polygon2D boundingBox = new DefaultWritablePolygon2D(vertices);
+					// final Polygon boundingBox = new Polygon(vertices);
 					for (int i = (int) boundingBox.realMin(0); i <= boundingBox.realMax(0); i++) {
 						for (int j = (int) boundingBox.realMin(1); j <= boundingBox.realMax(1); j++) {
 							raLabeling.setPosition(new int[] { i, j });
