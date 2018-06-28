@@ -4,7 +4,6 @@ import java.util.List;
 
 import net.imagej.ops.OpService;
 import net.imglib2.RandomAccessibleInterval;
-import net.imglib2.algorithm.gradient.PartialDerivative;
 import net.imglib2.converter.Converter;
 import net.imglib2.converter.Converters;
 import net.imglib2.type.numeric.real.FloatType;

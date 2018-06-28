@@ -50,7 +50,6 @@ import net.imglib2.FinalInterval;
 import net.imglib2.RandomAccess;
 import net.imglib2.RandomAccessible;
 import net.imglib2.RandomAccessibleInterval;
-import net.imglib2.algorithm.gradient.PartialDerivative;
 import net.imglib2.algorithm.neighborhood.Neighborhood;
 import net.imglib2.algorithm.neighborhood.RectangleShape;
 import net.imglib2.algorithm.neighborhood.RectangleShape.NeighborhoodsAccessible;
